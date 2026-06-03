@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ALECS — Analyzing Laws, Energy &amp; Computational Simulations – Lesson 3: Electricity Generation</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ── TOKENS ── */
+:root {
+  --navy:    #0d1b2a;
+  --navy2:   #132233;
+  --navy3:   #1a2e45;
+  --card:    #1e3450;
+  --card2:   #243d5c;
+  --orange:  #ff6b2b;
+  --orange2: #ff8c52;
+  --yellow:  #ffd700;
+  --green:   #22c55e;
+  --red:     #ef4444;
+  --purple:  #9b59b6;
+  --text:    #e8f0fe;
+  --muted:   #7a9cc0;
+  --border:  rgba(255,255,255,.08);
+  --radius:  14px;
+  --ff-head: 'Orbitron', sans-serif;
+  --ff-body: 'Nunito', sans-serif;
+  --accent:  #10b981;   /* teal/green accent for L3 electricity */
+  --accent2: #34d399;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--navy);
+  color: var(--text);
+  font-family: var(--ff-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image:
+    linear-gradient(rgba(16,185,129,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16,185,129,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 28px;
+  background: var(--navy2);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 200;
+}
+#topbar-left { display: flex; align-items: center; gap: 12px; }
+.logo-link { font-family: var(--ff-head); font-size: 1.15rem; color: var(--accent); text-decoration: none; display: flex; align-items: center; gap: 7px; }
+.lesson-badge { background: var(--accent); color: #fff; font-size: .72rem; font-weight: 800; padding: 3px 12px; border-radius: 20px; letter-spacing: .5px; text-transform: uppercase; }
+#topbar-right { display: flex; align-items: center; gap: 14px; }
+.xp-live { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); }
+.xp-live strong { color: var(--yellow); font-weight: 800; font-family: var(--ff-head); }
+.streak-pill { background: rgba(249,115,22,.15); border: 1px solid rgba(249,115,22,.3); color: var(--orange); padding: 2px 10px; border-radius: 99px; font-size: .78rem; font-weight: 700; }
+
+/* ── XP BAR ── */
+#xp-bar-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 28px; background: var(--navy3);
+  border-bottom: 1px solid var(--border);
+  font-size: .8rem; font-weight: 700;
+}
+#level-lbl { color: var(--yellow); white-space: nowrap; font-family: var(--ff-head); font-size: .75rem; }
+#xp-track { flex: 1; height: 8px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
+#xp-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--yellow)); transition: width .6s ease; }
+#xp-lbl { color: var(--muted); white-space: nowrap; min-width: 90px; text-align: right; }
+
+/* ── PHASE STEPPER ── */
+#phase-stepper {
+  display: flex; justify-content: center;
+  background: var(--navy2); border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+#phase-stepper::-webkit-scrollbar { display: none; }
+.step-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 16px 12px; border-bottom: 3px solid transparent;
+  transition: all .3s; cursor: default; min-width: 70px;
+}
+.step-item.active { border-color: var(--accent); }
+.step-item.done   { border-color: var(--green); }
+.step-bubble {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 800;
+  background: var(--card); border: 2px solid var(--muted); color: var(--muted);
+  margin-bottom: 5px; transition: all .3s;
+}
+.step-item.active .step-bubble { background: var(--accent); border-color: var(--accent); color: #fff; }
+.step-item.done   .step-bubble { background: var(--green); border-color: var(--green); color: #fff; }
+.step-label { font-size: .63rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); white-space: nowrap; }
+.step-item.active .step-label { color: var(--accent2); }
+.step-item.done   .step-label { color: var(--green); }
+
+/* ── LAYOUT ── */
+#page-body { display: flex; min-height: calc(100vh - 120px); }
+
+/* ── SIDEBAR ── */
+#lesson-sidebar {
+  width: 220px; flex-shrink: 0; background: var(--navy2);
+  border-right: 1px solid var(--border); padding: 20px 0 40px;
+  position: sticky; top: 120px;
+  height: calc(100vh - 120px); overflow-y: auto; scrollbar-width: none;
+}
+#lesson-sidebar::-webkit-scrollbar { display: none; }
+.sb-section-label { font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); padding: 0 18px; margin-bottom: 8px; margin-top: 20px; }
+.sb-section-label:first-child { margin-top: 0; }
+.sb-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 18px; background: none; border: none; border-left: 3px solid transparent; color: var(--muted); font-family: var(--ff-body); font-size: .88rem; font-weight: 700; cursor: pointer; text-align: left; text-decoration: none; transition: color .2s, background .2s, border-color .2s; }
+.sb-btn:hover { background: rgba(16,185,129,.06); color: var(--text); border-color: var(--accent); }
+.sb-btn.danger:hover { background: rgba(239,68,68,.08); color: var(--red); border-color: var(--red); }
+.sb-btn .sb-icon { font-size: 1rem; width: 22px; text-align: center; }
+.sb-phase-list { padding: 0; list-style: none; }
+.sb-phase-item { display: flex; align-items: center; gap: 10px; padding: 8px 18px; font-size: .82rem; font-weight: 700; color: var(--muted); transition: color .2s; }
+.sb-phase-item.active { color: var(--accent2); }
+.sb-phase-item.done   { color: var(--green); }
+.sb-phase-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background .3s; }
+.sb-phase-item.active .sb-phase-dot { background: var(--accent); }
+.sb-phase-item.done   .sb-phase-dot { background: var(--green); }
+.sb-divider { height: 1px; background: var(--border); margin: 14px 18px; }
+
+/* ── CONTENT ── */
+#lesson-content { flex: 1; min-width: 0; padding: 28px 28px 80px; }
+.phase-block { display: none; }
+.phase-block.active { display: block; }
+
+/* ── CONFIRM MODAL ── */
+#confirm-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9999; align-items: center; justify-content: center; }
+#confirm-modal.open { display: flex; }
+#confirm-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px; max-width: 380px; width: 90%; text-align: center; }
+#confirm-box h3 { font-family: var(--ff-head); font-size: 1rem; color: var(--text); margin-bottom: 10px; }
+#confirm-box p  { font-size: .88rem; color: var(--muted); line-height: 1.6; margin-bottom: 22px; }
+.gap-row { display: flex; gap: 10px; }
+
+/* ── SECTION HEADER ── */
+.section-header { text-align: center; margin-bottom: 26px; }
+.phase-tag { display: inline-block; background: var(--accent); color: #fff; font-size: .7rem; font-weight: 800; padding: 3px 12px; border-radius: 12px; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+.section-header h2 { font-family: var(--ff-head); font-size: 1.5rem; color: var(--text); margin-bottom: 8px; }
+.section-header p { color: var(--muted); font-size: .92rem; line-height: 1.6; max-width: 560px; margin: 0 auto; }
+
+/* ── CARDS ── */
+.l1-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 16px; }
+.l1-card-title { font-family: var(--ff-head); font-size: .85rem; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+
+/* ── BUTTONS ── */
+.l1-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 26px; border: none; border-radius: 10px; font-family: var(--ff-body); font-weight: 800; font-size: .93rem; cursor: pointer; transition: .2s; }
+.l1-btn-primary  { background: var(--accent); color: #fff; }
+.l1-btn-primary:hover  { background: var(--accent2); transform: translateY(-1px); }
+.l1-btn-secondary { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
+.l1-btn-secondary:hover { background: var(--navy3); }
+.l1-btn-green    { background: var(--green); color: #fff; }
+.l1-btn-green:hover { filter: brightness(1.1); }
+.l1-btn-sm { padding: 7px 16px; font-size: .82rem; }
+.l1-btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+
+/* ── KNOWLEDGE CHECK ── */
+.kc-question { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+.kc-q-text { font-weight: 700; font-size: .96rem; line-height: 1.55; margin-bottom: 14px; }
+.kc-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kc-opt { background: var(--navy3); border: 2px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: pointer; font-family: var(--ff-body); font-size: .88rem; font-weight: 600; color: var(--text); text-align: left; transition: border-color .2s, background .2s; }
+.kc-opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(16,185,129,.08); }
+.kc-opt.correct { background: rgba(34,197,94,.12); border-color: var(--green); color: var(--green); }
+.kc-opt.wrong   { background: rgba(239,68,68,.12); border-color: var(--red); color: var(--red); }
+.kc-opt:disabled { cursor: default; }
+.kc-feedback { margin-top: 10px; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: .86rem; display: none; }
+.kc-feedback.show { display: block; }
+.kc-feedback.correct { background: rgba(34,197,94,.12); border: 1px solid var(--green); color: var(--green); }
+.kc-feedback.wrong   { background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+
+/* ── FORMULA GRID ── */
+.formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.formula-item { background: var(--navy3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.formula-item.wide { grid-column: 1 / -1; }
+.formula-eq { font-family: var(--ff-head); font-size: .88rem; color: var(--yellow); margin-bottom: 6px; }
+.formula-item p { font-size: .82rem; color: var(--muted); line-height: 1.55; }
+
+/* ── ELECTRICITY GAME (Phase 3) ── */
+.sim-panel { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+.sim-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.sim-title { font-family: var(--ff-head); font-size: .85rem; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; }
+.sim-phase-badge { background: var(--navy3); border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.sim-controls { padding: 14px 18px; background: var(--card2); border-top: 1px solid var(--border); }
+.control-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.control-row label { font-size: .82rem; font-weight: 700; color: var(--muted); min-width: 180px; }
+.control-row label span { color: var(--yellow); font-family: var(--ff-head); font-size: .85rem; min-width: 70px; display: inline-block; }
+.control-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
+.sim-stats { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px; background: var(--navy3); border-top: 1px solid var(--border); }
+.stat-chip { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: .78rem; color: var(--muted); }
+.stat-chip strong { color: var(--yellow); font-weight: 800; }
+.sim-msg { display: none; margin: 12px 18px; padding: 12px 16px; border-radius: 10px; font-weight: 700; font-size: .94rem; text-align: center; }
+.sim-msg.show.correct { display: block; background: rgba(34,197,94,.15); border: 1px solid var(--green); color: var(--green); }
+.sim-msg.show.wrong   { display: block; background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+.sim-msg.show.info    { display: block; background: rgba(16,185,129,.1); border: 1px solid var(--accent); color: var(--accent2); }
+
+/* ── GOALS STRIP ── */
+#sim-goals-strip { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; background: var(--navy2); border: 1px solid var(--border); margin-bottom: 16px; border-radius: var(--radius); }
+.goal-pill { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: .78rem; font-weight: 700; color: var(--muted); transition: .3s; }
+.goal-pill.done { background: rgba(34,197,94,.1); border-color: var(--green); color: var(--green); }
+.goal-pill .gp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: .3s; }
+.goal-pill.done .gp-dot { background: var(--green); }
+#goals-count { font-size: .82rem; font-weight: 800; color: var(--yellow); font-family: var(--ff-head); margin-left: auto; }
+
+/* ── FLOW PATH ANIMATION ── */
+#flow-path { display: flex; align-items: center; gap: 0; padding: 16px 18px; background: var(--navy3); border-radius: var(--radius); margin-bottom: 14px; overflow-x: auto; }
+.flow-node { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 80px; }
+.flow-icon { font-size: 1.8rem; }
+.flow-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); text-align: center; }
+.flow-val { font-family: var(--ff-head); font-size: .8rem; color: var(--yellow); }
+.flow-arrow { font-size: 1.4rem; color: var(--muted); margin: 0 4px; flex-shrink: 0; transition: color .4s; }
+.flow-arrow.active { color: var(--accent); animation: pulse-arrow .8s ease-in-out infinite; }
+@keyframes pulse-arrow { 0%,100%{opacity:1} 50%{opacity:.4} }
+.flow-node.active .flow-val { color: var(--accent2); }
+
+/* ── SCREEN TABS ── */
+.screen-tabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+.screen-tab { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--card2); color: var(--muted); font-weight: 700; font-size: .8rem; cursor: pointer; transition: .2s; white-space: nowrap; }
+.screen-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── SCREEN BLOCKS ── */
+.screen-block { display: none; }
+.screen-block.active { display: block; }
+
+/* ── TOGGLE BUTTONS ── */
+.toggle-row { display: flex; gap: 10px; margin-bottom: 12px; }
+.toggle-btn { flex: 1; padding: 9px; border: 2px solid var(--border); border-radius: 10px; background: var(--navy3); color: var(--muted); font-family: var(--ff-body); font-weight: 800; font-size: .85rem; cursor: pointer; transition: .2s; }
+.toggle-btn.active { border-color: var(--accent); background: rgba(16,185,129,.1); color: var(--accent2); }
+
+/* ── VOLTAGE BARS ── */
+.volt-bar-wrap { margin-bottom: 12px; }
+.volt-bar-label { display: flex; justify-content: space-between; font-size: .82rem; font-weight: 700; margin-bottom: 4px; }
+.volt-bar-track { height: 18px; background: var(--navy3); border-radius: 6px; overflow: hidden; }
+.volt-bar-fill { height: 100%; border-radius: 6px; transition: width .6s ease; background: linear-gradient(90deg, var(--accent), var(--yellow)); }
+.volt-bar-fill.red { background: linear-gradient(90deg, var(--red), var(--orange)); }
+
+/* ── SAFETY BUTTONS ── */
+.safety-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.safety-btn { padding: 14px 8px; border-radius: 10px; border: 2px solid var(--border); background: var(--navy3); color: var(--muted); font-family: var(--ff-body); font-weight: 800; font-size: .82rem; cursor: pointer; transition: .2s; text-align: center; line-height: 1.4; }
+.safety-btn.danger { border-color: rgba(239,68,68,.4); color: var(--red); }
+.safety-btn.safe   { border-color: rgba(34,197,94,.4); color: var(--green); }
+.safety-btn:hover  { transform: translateY(-2px); }
+
+/* ── DATA TABLE ── */
+.data-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: .85rem; }
+.data-table th { background: var(--navy3); padding: 8px 14px; text-align: left; font-family: var(--ff-head); font-size: .72rem; letter-spacing: .5px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.data-table td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.data-table td strong { color: var(--yellow); font-family: var(--ff-head); }
+.data-table tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── MOTOR/GENERATOR DIAGRAM ── */
+.motgen-diagram { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.motgen-box { background: var(--navy3); border: 2px solid var(--border); border-radius: var(--radius); padding: 20px 16px; text-align: center; transition: .3s; }
+.motgen-box.active { border-color: var(--accent); background: rgba(16,185,129,.06); }
+.motgen-icon { font-size: 2.5rem; margin-bottom: 8px; display: block; }
+.motgen-title { font-family: var(--ff-head); font-size: .82rem; color: var(--accent2); margin-bottom: 8px; }
+.motgen-arrow { font-size: .88rem; color: var(--yellow); font-weight: 700; margin-bottom: 8px; }
+.motgen-desc { font-size: .8rem; color: var(--muted); line-height: 1.55; }
+
+/* ── QUIZ ── */
+.quiz-counter { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: .85rem; font-weight: 700; }
+.quiz-prog-track { height: 5px; background: var(--navy3); border-radius: 99px; overflow: hidden; margin-bottom: 20px; }
+.quiz-prog-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+.quiz-q { font-size: 1rem; font-weight: 700; line-height: 1.6; margin-bottom: 20px; }
+.quiz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.quiz-opt { background: var(--navy3); border: 2px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; font-family: var(--ff-body); font-size: .88rem; font-weight: 600; color: var(--text); text-align: left; transition: border-color .2s, background .2s; }
+.quiz-opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(16,185,129,.08); }
+.quiz-opt.correct { background: rgba(34,197,94,.12); border-color: var(--green); color: var(--green); }
+.quiz-opt.wrong   { background: rgba(239,68,68,.12); border-color: var(--red); color: var(--red); }
+.quiz-opt:disabled { cursor: default; }
+.quiz-feedback { margin-top: 8px; padding: 10px 14px; border-radius: 8px; font-weight: 700; font-size: .88rem; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct { background: rgba(34,197,94,.12); border: 1px solid var(--green); color: var(--green); }
+.quiz-feedback.wrong   { background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+
+/* ── ANALYSIS BARS ── */
+.pa-bar-wrap { margin-bottom: 16px; }
+.pa-bar-label { display: flex; justify-content: space-between; font-size: .85rem; font-weight: 700; margin-bottom: 5px; }
+.pa-bar-track { height: 12px; background: var(--navy3); border-radius: 6px; overflow: hidden; }
+.pa-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--yellow)); transition: width .8s ease; }
+
+/* ── BADGE GRID ── */
+.badge-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 18px 0; }
+.badge-card { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; text-align: center; min-width: 110px; animation: badgePop .4s ease both; }
+@keyframes badgePop { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+.badge-icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+.badge-name { font-family: var(--ff-head); font-size: .68rem; letter-spacing: .5px; color: var(--accent2); }
+
+/* ── XP TOAST ── */
+#xp-toast { position: fixed; bottom: 80px; right: 24px; background: var(--card); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 18px; font-weight: 800; font-size: .9rem; color: var(--yellow); opacity: 0; transform: translateY(10px); transition: .3s; pointer-events: none; z-index: 9999; }
+#xp-toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── FUN FACT ── */
+#funfact-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 22px; font-size: .88rem; color: var(--text); max-width: 520px; width: 90%; text-align: center; opacity: 0; pointer-events: none; transition: .4s; z-index: 9999; }
+#funfact-bar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── HELPERS ── */
+.text-center { text-align: center; }
+.mt-4 { margin-top: 16px; }
+.mt-2 { margin-top: 8px; }
+.gap-row { display: flex; gap: 10px; }
+.tip-box { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); border-radius: 10px; padding: 14px 18px; font-size: .88rem; line-height: 1.6; color: var(--text); margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<!-- XP TOAST -->
+<div id="xp-toast">+0 XP</div>
+<!-- FUN FACT -->
+<div id="funfact-bar"></div>
+
+<!-- PHASE NAV MODAL -->
+<div id="phase-nav-modal">
+  <div id="phase-nav-box">
+    <h3>📍 Phase Navigation</h3>
+    <p>Review your progress or revisit any completed phase. XP is not re-awarded in review mode.</p>
+    <ul class="pnav-list" id="pnav-list"></ul>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="closePhaseNav()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirm-modal">
+  <div id="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="gap-row" style="justify-content:center">
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="closeConfirm()">Cancel</button>
+      <button class="l1-btn l1-btn-primary l1-btn-sm" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<header id="topbar">
+  <div id="topbar-left">
+    <a href="index.html" class="logo-link">⚡ ALECS</a>
+    <span class="lesson-badge">Lesson 3</span>
+  </div>
+  <div id="topbar-right">
+    <span class="xp-live">XP: <strong id="xp-display">0</strong></span>
+    <span class="streak-pill" id="streak-display">🔥 0-day streak</span>
+  </div>
+</header>
+
+<!-- XP BAR -->
+<div id="xp-bar-row">
+  <span id="level-lbl">⚡ Level 1</span>
+  <div id="xp-track"><div id="xp-fill" style="width:0%"></div></div>
+  <span id="xp-lbl">0 / 1000 XP</span>
+</div>
+
+<!-- PHASE STEPPER -->
+<div id="phase-stepper">
+  <div class="step-item active" id="step-1"><div class="step-bubble">1</div><div class="step-label">Prior Know.</div></div>
+  <div class="step-item" id="step-2"><div class="step-bubble">2</div><div class="step-label">Concepts</div></div>
+  <div class="step-item" id="step-3"><div class="step-bubble">3</div><div class="step-label">Power Quest</div></div>
+  <div class="step-item" id="step-4"><div class="step-bubble">4</div><div class="step-label">Analysis</div></div>
+  <div class="step-item" id="step-5"><div class="step-bubble">5</div><div class="step-label">Final Quiz</div></div>
+  <div class="step-item" id="step-6"><div class="step-bubble">6</div><div class="step-label">Results</div></div>
+</div>
+
+<!-- PAGE BODY -->
+<div id="page-body">
+
+<!-- SIDEBAR -->
+<nav id="lesson-sidebar">
+  <div class="sb-section-label">Navigate</div>
+  <a href="index.html" class="sb-btn"><span class="sb-icon">🏠</span> Main Menu</a>
+  <button class="sb-btn" onclick="openPhaseNav()"><span class="sb-icon">📍</span> Phase Navigation</button>
+  <button class="sb-btn danger" onclick="confirmRestart()"><span class="sb-icon">↺</span> Restart Lesson</button>
+  <div class="sb-divider"></div>
+  <div class="sb-section-label">Phases</div>
+  <ul class="sb-phase-list" id="sb-phase-list">
+    <li class="sb-phase-item active" id="sb-step-1"><div class="sb-phase-dot"></div>1 · Knowledge Check</li>
+    <li class="sb-phase-item" id="sb-step-2"><div class="sb-phase-dot"></div>2 · Concepts</li>
+    <li class="sb-phase-item" id="sb-step-3"><div class="sb-phase-dot"></div>3 · Power Quest</li>
+    <li class="sb-phase-item" id="sb-step-4"><div class="sb-phase-dot"></div>4 · Analysis</li>
+    <li class="sb-phase-item" id="sb-step-5"><div class="sb-phase-dot"></div>5 · Final Quiz</li>
+    <li class="sb-phase-item" id="sb-step-6"><div class="sb-phase-dot"></div>6 · Results</li>
+  </ul>
+  <div class="sb-divider"></div>
+  <div class="sb-section-label">Your Stats</div>
+  <div style="padding:0 18px">
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px">XP Earned This Lesson</div>
+    <div style="font-family:var(--ff-head);font-size:1.1rem;color:var(--yellow)" id="sb-xp-earned">0 XP</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:10px;margin-bottom:4px">Current Streak</div>
+    <div style="font-size:.88rem;color:var(--orange);font-weight:700" id="sb-streak">🔥 0-day streak</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:10px;margin-bottom:4px">Phase Progress</div>
+    <div style="font-size:.88rem;color:var(--accent2);font-weight:700" id="sb-phase-prog">Phase 1 of 6</div>
+  </div>
+</nav>
+
+<!-- LESSON CONTENT -->
+<div id="lesson-content">
+
+<!-- ═══ PHASE 1 – KNOWLEDGE CHECK ═══ -->
+<div id="phase-1" class="phase-block active">
+  <div class="section-header">
+    <div class="phase-tag">Phase 1 · Knowledge Check</div>
+    <h2>⚡ What Do You Already Know?</h2>
+    <p>Answer all 5 questions before moving on. Don't worry — there's no penalty for wrong answers!</p>
+  </div>
+  <div id="kc-questions-wrap"></div>
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" id="kc-next-btn" disabled onclick="goPhase(2)">Next: Concepts &amp; Formulas ⚡ →</button>
+  </div>
+</div>
+
+<!-- ═══ PHASE 2 – CONCEPTS ═══ -->
+<div id="phase-2" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 2 · Concepts</div>
+    <h2>⚡ Electricity Generation</h2>
+    <p>Learn how power plants generate electricity, how it travels safely to your home, and the difference between motors and generators!</p>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">🏭 How Electricity Is Generated</div>
+    <p style="font-size:.9rem;color:var(--muted);line-height:1.75;margin-bottom:14px">
+      Power plants burn fuel (coal, gas) or use renewable energy (wind, water, solar) to spin <strong style="color:var(--text)">turbines</strong>. The turbine spins a coil of wire inside a magnetic field — this is a <strong style="color:var(--text)">generator</strong>, which converts mechanical energy into electrical energy via electromagnetic induction.
+    </p>
+    <div class="formula-grid">
+      <div class="formula-item">
+        <div class="formula-eq">Generator → High Voltage AC</div>
+        <p>Power plants produce <strong>very high voltage</strong> electricity (e.g., 11kV–25kV from generator, stepped up to 400kV) to minimize energy loss during transmission.</p>
+      </div>
+      <div class="formula-item">
+        <div class="formula-eq">Power Loss = I² × R</div>
+        <p>Higher transmission voltage means lower current (I), which means much <strong>less power lost as heat</strong> in the cables (P=I²R).</p>
+      </div>
+      <div class="formula-item wide">
+        <div class="formula-eq">Power = Voltage × Current → P = V × I</div>
+        <p>This fundamental formula links voltage (V), current (I), and power (P). Doubling voltage halves current for the same power — key to efficient long-distance transmission.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">🔌 The Distribution Grid</div>
+    <div class="formula-grid">
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--red)">⚡ Step-Up Transformer</div>
+        <p>At the power plant, transformers <strong style="color:var(--text)">increase voltage</strong> from ~25kV to ~400kV for long-distance transmission on high-voltage lines. Less current = less heat loss.</p>
+      </div>
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--green)">🏠 Step-Down Substation</div>
+        <p>Grid stations (substations) <strong style="color:var(--text)">reduce voltage</strong> to safe levels: 400kV → 33kV → 11kV → 220V for homes. Each step uses a step-down transformer.</p>
+      </div>
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--yellow)">📊 Electric Meter</div>
+        <p>Measures electricity consumed in <strong style="color:var(--text)">kilowatt-hours (kWh)</strong>. Your monthly bill is based on this reading. 1 kWh = 1,000 watts used for 1 hour.</p>
+      </div>
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--accent)">kWh = Power (kW) × Time (h)</div>
+        <p>A 100W bulb running for 10 hours uses 1 kWh. Appliance labels show wattage — multiply by hours used to find your energy consumption.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">⚙️ Motors vs Generators — Two Sides of the Same Coin</div>
+    <div class="motgen-diagram">
+      <div class="motgen-box">
+        <span class="motgen-icon">🔌</span>
+        <div class="motgen-title">Electric Motor</div>
+        <div class="motgen-arrow">Electrical Energy → Mechanical Energy</div>
+        <div class="motgen-desc">Converts electricity into motion. Uses: electric fans, elevators, electric cars, washing machines. Uses Fleming's Left-Hand Rule.</div>
+      </div>
+      <div class="motgen-box">
+        <span class="motgen-icon">⚡</span>
+        <div class="motgen-title">Generator</div>
+        <div class="motgen-arrow">Mechanical Energy → Electrical Energy</div>
+        <div class="motgen-desc">Converts motion into electricity. Uses: power plants, bicycle dynamos, wind turbines. Uses Fleming's Right-Hand Rule.</div>
+      </div>
+    </div>
+    <div class="tip-box">
+      <strong>Similarities:</strong> Both use coils of wire, magnets, and electromagnetic induction. They are essentially the same device run in opposite directions! <br>
+      <strong>Key Difference:</strong> The direction of energy flow — motor INPUT electricity, generator OUTPUT electricity.
+    </div>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">🛡️ Electrical Safety</div>
+    <div class="formula-grid">
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--red)">⚠️ Common Hazards</div>
+        <p>Frayed/damaged cords, wet hands touching outlets, overloaded circuits (too many appliances), exposed wires, using faulty appliances near water.</p>
+      </div>
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--green)">✅ Safety Precautions</div>
+        <p>Always unplug by the plug (not cord), keep appliances away from water, use circuit breakers, check for damaged insulation, never overload sockets.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag & Drop: Match the concept -->
+  <div class="l1-card">
+    <div class="l1-card-title">🎯 Match the Concept</div>
+    <p style="font-size:.86rem;color:var(--muted);margin-bottom:16px">Drag each term to its correct description below.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" id="l3-chip-bank">
+      <div class="kc-opt" draggable="true" data-val="generator" style="cursor:grab;padding:8px 14px;display:inline-block">⚡ Generator</div>
+      <div class="kc-opt" draggable="true" data-val="substation" style="cursor:grab;padding:8px 14px;display:inline-block">🏭 Substation</div>
+      <div class="kc-opt" draggable="true" data-val="meter" style="cursor:grab;padding:8px 14px;display:inline-block">📊 Electric Meter</div>
+      <div class="kc-opt" draggable="true" data-val="motor" style="cursor:grab;padding:8px 14px;display:inline-block">🔌 Motor</div>
+    </div>
+    <div id="l3-drop-zones">
+      <div class="l1-card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+        <div class="l3-drop-zone kc-opt" data-answer="generator" style="min-width:140px;border-style:dashed;text-align:center;color:var(--muted)">Drop here</div>
+        <span style="color:var(--text);font-size:.88rem">Converts mechanical energy into electrical energy (motion → electricity)</span>
+      </div>
+      <div class="l1-card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+        <div class="l3-drop-zone kc-opt" data-answer="substation" style="min-width:140px;border-style:dashed;text-align:center;color:var(--muted)">Drop here</div>
+        <span style="color:var(--text);font-size:.88rem">Steps down high-voltage electricity to safe levels for homes and businesses</span>
+      </div>
+      <div class="l1-card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+        <div class="l3-drop-zone kc-opt" data-answer="meter" style="min-width:140px;border-style:dashed;text-align:center;color:var(--muted)">Drop here</div>
+        <span style="color:var(--text);font-size:.88rem">Measures electricity consumed in kilowatt-hours (kWh) for billing</span>
+      </div>
+      <div class="l1-card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+        <div class="l3-drop-zone kc-opt" data-answer="motor" style="min-width:140px;border-style:dashed;text-align:center;color:var(--muted)">Drop here</div>
+        <span style="color:var(--text);font-size:.88rem">Converts electrical energy into mechanical motion (electricity → movement)</span>
+      </div>
+    </div>
+    <div id="l3-drag-result" style="margin-top:10px;padding:10px 14px;border-radius:8px;font-weight:700;font-size:.88rem;display:none"></div>
+    <div class="gap-row mt-2">
+      <button class="l1-btn l1-btn-primary l1-btn-sm" onclick="checkL3Drag()">✓ Check Answers</button>
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="resetL3Drag()">↺ Reset</button>
+    </div>
+    <div class="text-center mt-4">
+      <button class="l1-btn l1-btn-primary" id="p2-next-btn" disabled onclick="goPhase(3)">Next: Electricity Power Quest ⚡ →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PHASE 3 – ELECTRICITY POWER QUEST GAME ═══ -->
+<div id="phase-3" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 3 · Electricity Power Quest</div>
+    <h2>⚡ Electricity Power Quest</h2>
+    <p>Complete all 4 experiments to understand how electricity is generated, distributed, and used safely!</p>
+  </div>
+
+  <!-- Goals strip -->
+  <div id="sim-goals-strip">
+    <div class="goal-pill" id="sim-goal-1"><div class="gp-dot"></div>Generation Setup</div>
+    <div class="goal-pill" id="sim-goal-2"><div class="gp-dot"></div>Distribution</div>
+    <div class="goal-pill" id="sim-goal-3"><div class="gp-dot"></div>Safety Analysis</div>
+    <div class="goal-pill" id="sim-goal-4"><div class="gp-dot"></div>Motor vs Generator</div>
+    <span id="goals-count">0 / 4</span>
+  </div>
+
+  <!-- Screen tabs -->
+  <div class="screen-tabs">
+    <button class="screen-tab active" id="tab-s1" onclick="switchScreen(1)">⚡ Generation</button>
+    <button class="screen-tab" id="tab-s2" onclick="switchScreen(2)">🔌 Distribution</button>
+    <button class="screen-tab" id="tab-s3" onclick="switchScreen(3)">🛡️ Safety</button>
+    <button class="screen-tab" id="tab-s4" onclick="switchScreen(4)">⚙️ Motor/Gen</button>
+  </div>
+
+  <!-- SCREEN 1: Generation Setup -->
+  <div class="screen-block active" id="screen-1">
+    <div class="sim-panel">
+      <div class="sim-header">
+        <span class="sim-title">⚡ Screen 1 — Power Generation</span>
+        <span class="sim-phase-badge">Goal: Set up your power plant</span>
+      </div>
+      <div style="padding:16px 18px">
+        <p style="font-size:.86rem;color:var(--muted);margin-bottom:16px">Power plants use turbines and generators to produce high-voltage AC electricity. Step-up transformers boost the voltage for long-distance transmission.</p>
+
+        <!-- Plant type -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Power Plant Type</div>
+          <div class="toggle-row">
+            <button class="toggle-btn active" id="plant-coal" onclick="selectPlant('coal',this)">🏭 Coal</button>
+            <button class="toggle-btn" id="plant-hydro" onclick="selectPlant('hydro',this)">💧 Hydro</button>
+            <button class="toggle-btn" id="plant-wind" onclick="selectPlant('wind',this)">💨 Wind</button>
+            <button class="toggle-btn" id="plant-solar" onclick="selectPlant('solar',this)">☀️ Solar</button>
+          </div>
+        </div>
+
+        <!-- Generator voltage -->
+        <div class="control-row">
+          <label>Generator Output: <span id="gen-volt-val">24 kV</span></label>
+          <input type="range" min="11" max="30" value="24" id="gen-volt-slider" oninput="updateGeneration()">
+        </div>
+
+        <!-- Step-up toggle -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+          <div style="font-size:.85rem;font-weight:700;color:var(--muted)">Step-up Transformer</div>
+          <button class="toggle-btn active" id="stepup-btn" onclick="toggleStepUp()" style="flex:unset;padding:7px 18px">ON ✓</button>
+        </div>
+
+        <!-- Data display -->
+        <table class="data-table">
+          <tr><th>Stage</th><th>Voltage</th><th>Status</th></tr>
+          <tr><td>Generator Output</td><td><strong id="d-gen-v">24 kV</strong></td><td id="d-gen-s" style="color:var(--accent)">Active</td></tr>
+          <tr><td>Step-up Transformer</td><td><strong id="d-step-v">408 kV</strong></td><td id="d-step-s" style="color:var(--yellow)">High Voltage</td></tr>
+          <tr><td>Transmission Line</td><td><strong id="d-trans-v">408 kV</strong></td><td id="d-trans-s" style="color:var(--accent)">Transmitting</td></tr>
+        </table>
+      </div>
+      <div class="sim-controls">
+        <button class="l1-btn l1-btn-primary" onclick="completeScreen1()">⚡ Start Distribution →</button>
+      </div>
+      <div class="sim-msg" id="s1-msg"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: Distribution -->
+  <div class="screen-block" id="screen-2">
+    <div class="sim-panel">
+      <div class="sim-header">
+        <span class="sim-title">🔌 Screen 2 — Distribution Simulation</span>
+        <span class="sim-phase-badge">Goal: See voltage step-down path</span>
+      </div>
+      <div style="padding:16px 18px">
+        <p style="font-size:.86rem;color:var(--muted);margin-bottom:14px">Electricity travels from the power plant to your home through a chain of voltage step-downs. Each substation reduces the voltage to safer, usable levels.</p>
+
+        <!-- Flow path -->
+        <div id="flow-path">
+          <div class="flow-node active">
+            <div class="flow-icon">🏭</div>
+            <div class="flow-label">Plant</div>
+            <div class="flow-val" id="fp-plant">400 kV</div>
+          </div>
+          <div class="flow-arrow active" id="fa-1">⚡</div>
+          <div class="flow-node">
+            <div class="flow-icon">🔲</div>
+            <div class="flow-label">Substation 1</div>
+            <div class="flow-val" id="fp-sub1">33 kV</div>
+          </div>
+          <div class="flow-arrow" id="fa-2">⚡</div>
+          <div class="flow-node">
+            <div class="flow-icon">🏗️</div>
+            <div class="flow-label">Substation 2</div>
+            <div class="flow-val" id="fp-sub2">11 kV</div>
+          </div>
+          <div class="flow-arrow" id="fa-3">⚡</div>
+          <div class="flow-node">
+            <div class="flow-icon">📊</div>
+            <div class="flow-label">Meter</div>
+            <div class="flow-val" id="fp-meter">220 V</div>
+          </div>
+          <div class="flow-arrow" id="fa-4">⚡</div>
+          <div class="flow-node">
+            <div class="flow-icon">🏠</div>
+            <div class="flow-label">Home</div>
+            <div class="flow-val" id="fp-home">220 V</div>
+          </div>
+        </div>
+
+        <!-- Load slider -->
+        <div class="control-row">
+          <label>Load / Consumption: <span id="load-val">0.5 kW</span></label>
+          <input type="range" min="1" max="20" value="5" id="load-slider" oninput="updateDistribution()">
+        </div>
+
+        <!-- Stats -->
+        <div class="sim-stats">
+          <div class="stat-chip">Transmission Voltage: <strong id="ds-trans">400 kV</strong></div>
+          <div class="stat-chip">Home Voltage: <strong id="ds-home">220 V</strong></div>
+          <div class="stat-chip">kWh Used: <strong id="ds-kwh">0.0 kWh</strong></div>
+          <div class="stat-chip">Power Loss (heat): <strong id="ds-loss" style="color:var(--orange)">Low</strong></div>
+        </div>
+
+        <!-- Voltage bar -->
+        <div class="volt-bar-wrap" style="margin-top:14px">
+          <div class="volt-bar-label"><span>Voltage Level</span><span id="vb-val">400 kV → 220 V</span></div>
+          <div class="volt-bar-track"><div class="volt-bar-fill" id="vb-fill" style="width:100%"></div></div>
+        </div>
+      </div>
+      <div class="sim-controls">
+        <button class="l1-btn l1-btn-primary" onclick="completeScreen2()">🛡️ Safety Analysis →</button>
+      </div>
+      <div class="sim-msg" id="s2-msg"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: Safety -->
+  <div class="screen-block" id="screen-3">
+    <div class="sim-panel">
+      <div class="sim-header">
+        <span class="sim-title">🛡️ Screen 3 — Safety Analysis</span>
+        <span class="sim-phase-badge">Goal: Identify and fix hazards</span>
+      </div>
+      <div style="padding:16px 18px">
+        <p style="font-size:.86rem;color:var(--muted);margin-bottom:14px">Click each hazard to see what happens, then apply the fix. Understanding electrical safety is critical for everyday life!</p>
+
+        <!-- Risk level bar -->
+        <div class="volt-bar-wrap">
+          <div class="volt-bar-label"><span>⚠️ Risk Level</span><span id="risk-val">Low</span></div>
+          <div class="volt-bar-track"><div class="volt-bar-fill red" id="risk-fill" style="width:5%"></div></div>
+        </div>
+
+        <!-- Safety buttons -->
+        <div class="safety-grid">
+          <button class="safety-btn danger" id="hazard-cord" onclick="triggerHazard('cord')">⚠️ Frayed Cord<br><small>Click to test</small></button>
+          <button class="safety-btn danger" id="hazard-wet" onclick="triggerHazard('wet')">💧 Wet Hands<br><small>Click to test</small></button>
+          <button class="safety-btn danger" id="hazard-over" onclick="triggerHazard('over')">🔌 Overloaded<br><small>Click to test</small></button>
+          <button class="safety-btn" id="fix-cord" onclick="applyFix('cord')" style="display:none">✅ Unplug/Replace Cord</button>
+          <button class="safety-btn" id="fix-wet" onclick="applyFix('wet')" style="display:none">✅ Dry Hands</button>
+          <button class="safety-btn" id="fix-over" onclick="applyFix('over')" style="display:none">✅ Unplug Appliances</button>
+        </div>
+
+        <div id="safety-result" style="margin-top:8px;padding:10px 14px;border-radius:8px;font-weight:700;font-size:.88rem;display:none"></div>
+        <div class="stat-chip" style="margin-top:10px;display:inline-block">Hazards Fixed: <strong id="hazard-count">0 / 3</strong></div>
+      </div>
+      <div class="sim-controls">
+        <button class="l1-btn l1-btn-primary" id="to-motgen-btn" disabled onclick="completeScreen3()">⚙️ Motor vs Generator →</button>
+      </div>
+      <div class="sim-msg" id="s3-msg"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: Motor vs Generator -->
+  <div class="screen-block" id="screen-4">
+    <div class="sim-panel">
+      <div class="sim-header">
+        <span class="sim-title">⚙️ Screen 4 — Motors vs Generators</span>
+        <span class="sim-phase-badge">Goal: Compare both devices</span>
+      </div>
+      <div style="padding:16px 18px">
+        <p style="font-size:.86rem;color:var(--muted);margin-bottom:14px">Toggle between Motor and Generator mode to see how the same device works differently. Same parts — opposite energy flow!</p>
+
+        <div class="toggle-row" style="margin-bottom:16px">
+          <button class="toggle-btn active" id="mode-motor" onclick="setMGMode('motor')">🔌 Motor Mode</button>
+          <button class="toggle-btn" id="mode-gen" onclick="setMGMode('generator')">⚡ Generator Mode</button>
+        </div>
+
+        <div class="motgen-diagram">
+          <div class="motgen-box active" id="mg-box-motor">
+            <span class="motgen-icon">🔌</span>
+            <div class="motgen-title">Electric Motor</div>
+            <div class="motgen-arrow" id="mg-arrow-motor">Electricity → Motion</div>
+            <div class="motgen-desc" id="mg-desc-motor">Input: Electrical current<br>Output: Mechanical rotation<br>Rule: Fleming's Left-Hand<br>Example: Fans, elevators, EVs</div>
+          </div>
+          <div class="motgen-box" id="mg-box-gen">
+            <span class="motgen-icon">⚡</span>
+            <div class="motgen-title">Generator</div>
+            <div class="motgen-arrow" id="mg-arrow-gen">Motion → Electricity</div>
+            <div class="motgen-desc" id="mg-desc-gen">Input: Mechanical force<br>Output: Electrical current<br>Rule: Fleming's Right-Hand<br>Example: Power plants, dynamos</div>
+          </div>
+        </div>
+
+        <div class="tip-box">
+          <strong>⚡ Both devices share:</strong> Coils of wire, magnets, electromagnetic induction, same physical structure.<br>
+          <strong>🔄 Key difference:</strong> Direction of energy. Motor = electricity in, motion out. Generator = motion in, electricity out.
+        </div>
+
+        <div class="sim-stats">
+          <div class="stat-chip">Active Mode: <strong id="mg-mode-display">Motor</strong></div>
+          <div class="stat-chip">Energy Input: <strong id="mg-input-display">Electrical</strong></div>
+          <div class="stat-chip">Energy Output: <strong id="mg-output-display">Mechanical</strong></div>
+          <div class="stat-chip">Fleming's Rule: <strong id="mg-rule-display">Left-Hand</strong></div>
+        </div>
+      </div>
+      <div class="sim-controls">
+        <button class="l1-btn l1-btn-primary" id="to-analysis-btn" disabled onclick="goPhase(4)">📊 See Your Analysis →</button>
+      </div>
+      <div class="sim-msg" id="s4-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PHASE 4 – ANALYSIS ═══ -->
+<div id="phase-4" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 4 · Performance Analysis</div>
+    <h2>📊 How Did You Do?</h2>
+    <p>Here's a breakdown of your Power Quest experiments and what they mean for your understanding.</p>
+  </div>
+  <div class="l1-card">
+    <div class="l1-card-title">📈 Experiment Completion</div>
+    <div class="pa-bar-wrap">
+      <div class="pa-bar-label"><span>Generation Setup</span><span id="pa-gen-val">—</span></div>
+      <div class="pa-bar-track"><div class="pa-bar-fill" id="pa-gen-bar" style="width:0%"></div></div>
+    </div>
+    <div class="pa-bar-wrap">
+      <div class="pa-bar-label"><span>Distribution Simulation</span><span id="pa-dist-val">—</span></div>
+      <div class="pa-bar-track"><div class="pa-bar-fill" id="pa-dist-bar" style="width:0%"></div></div>
+    </div>
+    <div class="pa-bar-wrap">
+      <div class="pa-bar-label"><span>Safety Hazards Fixed</span><span id="pa-safe-val">—</span></div>
+      <div class="pa-bar-track"><div class="pa-bar-fill" id="pa-safe-bar" style="width:0%"></div></div>
+    </div>
+    <div class="pa-bar-wrap">
+      <div class="pa-bar-label"><span>Motor/Generator Explored</span><span id="pa-mg-val">—</span></div>
+      <div class="pa-bar-track"><div class="pa-bar-fill" id="pa-mg-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="l1-card">
+    <div class="l1-card-title">💡 Your Feedback</div>
+    <div class="tip-box" id="pa-tip-box">Loading your analysis...</div>
+  </div>
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" onclick="goPhase(5)">📝 Start Final Quiz →</button>
+  </div>
+</div>
+
+<!-- ═══ PHASE 5 – QUIZ ═══ -->
+<div id="phase-5" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 5 · Final Quiz</div>
+    <h2>📝 Final Quiz — Electricity Generation</h2>
+    <p>10 questions covering generation, distribution, safety, and motors vs generators.</p>
+  </div>
+  <div class="l1-card">
+    <div class="quiz-counter">
+      <span>Question <span id="q-num">1</span> of 10</span>
+      <span>Score: <span id="q-score-live">0</span></span>
+    </div>
+    <div class="quiz-prog-track"><div class="quiz-prog-fill" id="q-prog-fill" style="width:0%"></div></div>
+    <div class="quiz-q" id="q-text"></div>
+    <div class="quiz-opts" id="q-options"></div>
+    <div class="quiz-feedback" id="q-feedback"></div>
+    <div class="text-center mt-4">
+      <button class="l1-btn l1-btn-primary" id="q-next-btn" style="display:none" onclick="nextQuestion()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PHASE 6 – RESULTS ═══ -->
+<div id="phase-6" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 6 · Results</div>
+    <h2>🏆 Lesson Complete!</h2>
+    <p>Amazing work powering through Electricity Generation!</p>
+  </div>
+  <div class="l1-card" style="text-align:center">
+    <div style="font-size:3rem;margin-bottom:8px">⚡</div>
+    <div style="font-family:var(--ff-head);font-size:2rem;color:var(--yellow);margin-bottom:6px" id="final-score-num">0 / 10</div>
+    <div style="color:var(--muted);font-size:.88rem;margin-bottom:20px">Final Quiz Score</div>
+    <div class="badge-grid" id="badge-grid"></div>
+  </div>
+  <div class="l1-card">
+    <div class="l1-card-title">📚 Quick Recap</div>
+    <ul style="color:var(--muted);font-size:.88rem;line-height:2;padding-left:18px">
+      <li>Power plants use turbines + generators to produce high-voltage AC electricity.</li>
+      <li>Step-up transformers boost voltage for long-distance transmission (less current = less loss).</li>
+      <li>Substations step down voltage safely: 400kV → 33kV → 11kV → 220V for homes.</li>
+      <li>Electric meters measure consumption in kWh (Power × Time).</li>
+      <li>Motors convert electricity → motion; Generators convert motion → electricity.</li>
+      <li>Electrical safety: always unplug by plug, keep dry, never overload circuits.</li>
+    </ul>
+  </div>
+  <div class="gap-row" style="justify-content:center;margin-top:16px">
+    <button class="l1-btn l1-btn-secondary" onclick="confirmRestart()">↺ Restart Lesson</button>
+    <button class="l1-btn l1-btn-primary" onclick="window.location.href='index.html'">🏠 Back to Dashboard</button>
+  </div>
+</div>
+
+</div><!-- end lesson-content -->
+</div><!-- end page-body -->
+
+<script>
+/* ═══════════════════════════════════════════════════
+   ALECS — LESSON 3: ELECTRICITY GENERATION
+   Matches lesson 1 & 2 structure exactly
+═══════════════════════════════════════════════════ */
+
+const XP_PER_LEVEL = 1000;
+
+function loadUser() {
+  const raw = localStorage.getItem('alecs_user');
+  if (!raw) return getDefaultUser();
+  try { return JSON.parse(raw); } catch { return getDefaultUser(); }
+}
+function saveUser(u) { localStorage.setItem('alecs_user', JSON.stringify(u)); }
+function getDefaultUser() {
+  return {
+    name:'Alex', xp:0, level:1, streak:0, lastLoginDate:null,
+    dailyGoals:{readLesson:false,playedGame:false,quizPassed:false},
+    lessons:{1:{pct:0,unlocked:true},2:{pct:0,unlocked:false},3:{pct:0,unlocked:false},4:{pct:0,unlocked:false}},
+    lesson3:{phase:1,kcScore:0,goalsCompleted:0,hazardsFixed:0,mgExplored:false,quizScore:0,complete:false}
+  };
+}
+
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function updateStreak(u) {
+  const today = todayStr();
+  if (!u.lastLoginDate) { u.streak = 1; u.lastLoginDate = today; return u; }
+  const diff = Math.round((new Date(today) - new Date(u.lastLoginDate)) / 86400000);
+  if (diff === 0) return u;
+  if (diff === 1) { u.streak++; } else { u.streak = 1; }
+  u.lastLoginDate = today;
+  return u;
+}
+
+function awardXP(amount, label) {
+  const u = loadUser();
+  u.xp += amount;
+  while (u.xp >= XP_PER_LEVEL) { u.xp -= XP_PER_LEVEL; u.level++; }
+  saveUser(u);
+  renderXP(u);
+  showXPToast('+' + amount + ' XP' + (label ? ' · ' + label : ''));
+  syncLesson3Progress();
+}
+
+function renderXP(u) {
+  document.getElementById('xp-display').textContent = u.xp + (u.level - 1) * XP_PER_LEVEL;
+  document.getElementById('level-lbl').textContent = '⚡ Level ' + u.level;
+  document.getElementById('xp-lbl').textContent = u.xp + ' / ' + XP_PER_LEVEL + ' XP';
+  document.getElementById('xp-fill').style.width = (u.xp / XP_PER_LEVEL * 100) + '%';
+  document.getElementById('streak-display').textContent = '🔥 ' + u.streak + '-day streak' + (u.streak >= 3 ? '!' : '');
+}
+
+function showXPToast(msg) {
+  const t = document.getElementById('xp-toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function showFunFact(txt) {
+  const b = document.getElementById('funfact-bar');
+  b.innerHTML = '<strong>🌟 Fun Fact: </strong>' + txt;
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 5000);
+}
+
+/* ── Init ── */
+const USER = loadUser();
+updateStreak(USER);
+if (!USER.lesson3) USER.lesson3 = getDefaultUser().lesson3;
+if (!USER.lessons) USER.lessons = {1:{pct:0,unlocked:true},2:{pct:0,unlocked:false},3:{pct:0,unlocked:false},4:{pct:0,unlocked:false}};
+saveUser(USER);
+renderXP(USER);
+
+/* ── Phase Navigation ── */
+let currentPhase = 1;
+let _l3Resuming = false;
+const PHASE_STEPS  = {1:'step-1',2:'step-2',3:'step-3',4:'step-4',5:'step-5',6:'step-6'};
+const PHASE_BLOCKS = {1:'phase-1',2:'phase-2',3:'phase-3',4:'phase-4',5:'phase-5',6:'phase-6'};
+
+function goPhase(n) {
+  document.getElementById(PHASE_STEPS[currentPhase]).className = 'step-item done';
+  document.getElementById(PHASE_BLOCKS[currentPhase]).className = 'phase-block';
+  currentPhase = n;
+  document.getElementById(PHASE_STEPS[n]).className = 'step-item active';
+  document.getElementById(PHASE_BLOCKS[n]).className = 'phase-block active';
+  // Re-mark all earlier steps done
+  for (let i = 1; i < n; i++) {
+    const s = document.getElementById(PHASE_STEPS[i]);
+    if (s) s.className = 'step-item done';
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+  syncSidebar();
+  if (!_l3Resuming) {
+    const phaseXP = {2:10, 3:15, 4:10, 5:20, 6:0};
+    if (phaseXP[n]) awardXP(phaseXP[n], 'Phase ' + n + ' unlocked');
+  }
+  if (n === 4) showAnalysis();
+  if (n === 5) initQuiz();
+  if (n === 6) showResults();
+  const u = loadUser();
+  u.lesson3.phase = Math.max(u.lesson3.phase || 1, n);
+  saveUser(u);
+}
+
+function resumeToSavedPhase() {
+  const u = loadUser();
+  const saved = u.lesson3 && u.lesson3.phase ? u.lesson3.phase : 1;
+  if (saved > 1) {
+    _l3Resuming = true;
+    goPhase(saved);
+    _l3Resuming = false;
+    const kcBtn = document.getElementById('kc-next-btn');
+    if (kcBtn && saved > 1) kcBtn.disabled = false;
+    const p2Btn = document.getElementById('p2-next-btn');
+    if (p2Btn && saved > 2) p2Btn.disabled = false;
+    const p3Btn = document.getElementById('to-analysis-btn');
+    if (p3Btn && saved > 3) p3Btn.disabled = false;
+  }
+}
+
+function syncSidebar() {
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById('sb-step-' + i);
+    if (!el) continue;
+    el.className = 'sb-phase-item' + (i === currentPhase ? ' active' : i < currentPhase ? ' done' : '');
+  }
+  const u = loadUser();
+  document.getElementById('sb-streak').textContent = '🔥 ' + u.streak + '-day streak';
+  document.getElementById('sb-phase-prog').textContent = 'Phase ' + currentPhase + ' of 6';
+  const totalXP = u.xp + (u.level - 1) * XP_PER_LEVEL;
+  document.getElementById('sb-xp-earned').textContent = totalXP + ' XP total';
+}
+
+/* ── Confirm Modal ── */
+let confirmCallback = null;
+function openConfirm(title, msg, onOk) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  confirmCallback = onOk;
+  document.getElementById('confirm-modal').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirm-modal').classList.remove('open'); confirmCallback = null; }
+document.getElementById('confirm-ok-btn').addEventListener('click', () => { if (confirmCallback) confirmCallback(); closeConfirm(); });
+document.getElementById('confirm-modal').addEventListener('click', e => { if (e.target === document.getElementById('confirm-modal')) closeConfirm(); });
+
+function confirmRestart() {
+  openConfirm('↺ Restart Lesson?', 'This will reset all Phase 1–6 progress for Lesson 3. XP and streak will be kept.',
+    () => {
+      const u = loadUser();
+      u.lesson3 = getDefaultUser().lesson3;
+      if (u.lessons && u.lessons[3]) u.lessons[3].pct = 0;
+      saveUser(u);
+      location.reload();
+    }
+  );
+}
+
+/* ════════════════════════════════════════
+   PHASE 1 — KNOWLEDGE CHECK
+════════════════════════════════════════ */
+const KC_QUESTIONS = [
+  { q: 'Where does the electricity that powers your home originally come from?',
+    opts: ['A. It is stored in the wires', 'B. Power plants that use turbines and generators', 'C. The electric meter outside your house', 'D. The substation in your street'],
+    ans: 1, exp: 'Power plants use turbines (spun by steam, water, or wind) connected to generators that produce electricity.' },
+  { q: 'Why is electricity transmitted at very high voltage over long distances?',
+    opts: ['A. To reduce energy lost as heat in the wires', 'B. Because homes need high voltage to run appliances', 'C. High voltage makes the electricity travel faster', 'D. It is cheaper to produce high voltage electricity'],
+    ans: 0, exp: 'High voltage means lower current (P=VI). Lower current means less heat loss in cables (P_loss = I²R).' },
+  { q: 'What does a substation do in the electricity grid?',
+    opts: ['A. It generates electricity using solar panels', 'B. It stores electricity for night-time use', 'C. It steps down high voltage to safe levels for homes', 'D. It measures how much electricity homes use'],
+    ans: 2, exp: 'Substations use step-down transformers to reduce voltage from transmission levels to safe home voltages.' },
+  { q: 'A motor and a generator are similar devices. What is the KEY difference between them?',
+    opts: ['A. Generators use magnets; motors do not', 'B. Motors need water to work; generators use steam', 'C. They are completely different machines with no similarities', 'D. Motors convert electricity to motion; generators do the opposite'],
+    ans: 3, exp: 'Both use coils and magnets. Motors input electricity and output motion; generators input motion and output electricity.' },
+  { q: 'What unit does an electric meter use to measure your electricity consumption?',
+    opts: ['A. Watts (W)', 'B. Kilowatt-hours (kWh)', 'C. Volts (V)', 'D. Amperes (A)'],
+    ans: 1, exp: 'kWh = Power (kW) × Time (h). A 1000W appliance running 1 hour uses 1 kWh.' },
+];
+
+let kcAnswered = 0, kcCorrect = 0;
+
+function buildKC() {
+  const wrap = document.getElementById('kc-questions-wrap');
+  wrap.innerHTML = '';
+  KC_QUESTIONS.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'kc-question'; div.id = 'kc-q-' + i;
+    div.innerHTML = `<div class="kc-q-text">Q${i+1}. ${q.q}</div>
+      <div class="kc-options">${q.opts.map((o,oi) => `<button class="kc-opt" onclick="answerKC(${i},${oi})">${o}</button>`).join('')}</div>
+      <div class="kc-feedback" id="kc-fb-${i}"></div>`;
+    wrap.appendChild(div);
+  });
+}
+
+function answerKC(qi, chosen) {
+  const q = KC_QUESTIONS[qi];
+  const qDiv = document.getElementById('kc-q-' + qi);
+  const fb = document.getElementById('kc-fb-' + qi);
+  const opts = qDiv.querySelectorAll('.kc-opt');
+  opts.forEach(b => b.disabled = true);
+  const ok = chosen === q.ans;
+  opts[chosen].classList.add(ok ? 'correct' : 'wrong');
+  if (!ok) opts[q.ans].classList.add('correct');
+  fb.className = 'kc-feedback show ' + (ok ? 'correct' : 'wrong');
+  fb.textContent = (ok ? '✓ ' : '✗ The correct answer is: ' + q.opts[q.ans] + '. ') + q.exp;
+  if (ok) { kcCorrect++; awardXP(5, 'Correct answer'); }
+  kcAnswered++;
+  if (kcAnswered === KC_QUESTIONS.length) {
+    document.getElementById('kc-next-btn').disabled = false;
+    const u = loadUser();
+    u.lesson3.kcScore = kcCorrect;
+    saveUser(u);
+  }
+}
+buildKC();
+
+/* ════════════════════════════════════════
+   PHASE 2 — DRAG & DROP
+════════════════════════════════════════ */
+let l3Dragging = null, l3DdScore = 0, l3DdCompleted = false;
+
+function initL3DragDrop() {
+  document.querySelectorAll('#l3-chip-bank [draggable]').forEach(chip => {
+    chip.addEventListener('dragstart', e => {
+      l3Dragging = chip;
+      e.dataTransfer.setData('text/plain', chip.dataset.val);
+      chip.style.opacity = '0.5';
+    });
+    chip.addEventListener('dragend', () => {
+      if (l3Dragging) l3Dragging.style.opacity = '';
+      l3Dragging = null;
+    });
+  });
+  document.querySelectorAll('.l3-drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; });
+    zone.addEventListener('dragleave', () => { zone.style.borderColor = ''; });
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.style.borderColor = '';
+      if (zone.classList.contains('correct')) return;
+      const val = e.dataTransfer.getData('text/plain');
+      const prev = zone.dataset.dropped;
+      if (prev) {
+        const prevChip = document.querySelector(`#l3-chip-bank [data-val="${prev}"]`);
+        if (prevChip) prevChip.style.opacity = '';
+      }
+      zone.dataset.dropped = val;
+      zone.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+      zone.style.color = 'var(--text)';
+      if (l3Dragging) l3Dragging.style.opacity = '0.4';
+    });
+  });
+}
+
+function checkL3Drag() {
+  const zones = document.querySelectorAll('.l3-drop-zone');
+  let allFilled = true;
+  zones.forEach(z => { if (!z.dataset.dropped) allFilled = false; });
+  const result = document.getElementById('l3-drag-result');
+  if (!allFilled) {
+    result.style.cssText = 'display:block;background:rgba(59,130,246,.1);border:1px solid var(--accent);color:var(--accent2)';
+    result.textContent = '⚠️ Drop a term in every zone before checking!';
+    return;
+  }
+  l3DdScore = 0;
+  zones.forEach(z => {
+    if (z.classList.contains('correct')) { l3DdScore++; return; }
+    const ok = z.dataset.dropped === z.dataset.answer;
+    z.classList.remove('wrong','correct');
+    if (ok) { z.classList.add('correct'); z.style.color = 'var(--green)'; l3DdScore++; }
+    else { z.classList.add('wrong'); z.style.color = 'var(--red)'; delete z.dataset.dropped; z.textContent = 'Drop here'; z.style.color = ''; }
+  });
+  if (l3DdScore === 4) {
+    result.style.cssText = 'display:block;background:rgba(34,197,94,.12);border:1px solid var(--green);color:var(--green)';
+    result.textContent = '🎉 Perfect! All 4 matches correct! You\'re ready for the Power Quest!';
+    l3DdCompleted = true;
+    awardXP(20, 'Concept Match complete!');
+    document.getElementById('p2-next-btn').disabled = false;
+    showFunFact('High-voltage transmission lines carry over 400,000V — touching one would vaporize you instantly!');
+  } else {
+    result.style.cssText = 'display:block;background:rgba(239,68,68,.12);border:1px solid var(--red);color:var(--red)';
+    result.textContent = '✗ ' + l3DdScore + '/4 correct. Wrong ones returned — try again!';
+  }
+}
+
+function resetL3Drag() {
+  document.querySelectorAll('#l3-chip-bank [draggable]').forEach(c => { c.style.opacity = ''; });
+  document.querySelectorAll('.l3-drop-zone').forEach(z => {
+    delete z.dataset.dropped;
+    z.classList.remove('correct','wrong');
+    z.textContent = 'Drop here';
+    z.style.color = '';
+    z.style.borderColor = '';
+  });
+  document.getElementById('l3-drag-result').style.display = 'none';
+}
+initL3DragDrop();
+
+/* ════════════════════════════════════════
+   PHASE 3 — ELECTRICITY POWER QUEST
+════════════════════════════════════════ */
+let goalsCompleted = new Set();
+let currentScreen = 1;
+let genVoltage = 24, stepUpOn = true, plantType = 'coal';
+let loadkW = 0.5, kWhUsed = 0;
+let hazardsFixed = new Set();
+let mgExplored = false, genExplored = false;
+
+function switchScreen(n) {
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('screen-' + i).className = 'screen-block' + (i === n ? ' active' : '');
+    document.getElementById('tab-s' + i).className = 'screen-tab' + (i === n ? ' active' : '');
+  }
+  currentScreen = n;
+}
+
+/* Screen 1 — Generation */
+function selectPlant(type, btn) {
+  plantType = type;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateGeneration();
+}
+
+let stepUpEnabled = true;
+function toggleStepUp() {
+  stepUpEnabled = !stepUpEnabled;
+  const btn = document.getElementById('stepup-btn');
+  btn.textContent = stepUpEnabled ? 'ON ✓' : 'OFF ✗';
+  btn.classList.toggle('active', stepUpEnabled);
+  updateGeneration();
+}
+
+function updateGeneration() {
+  genVoltage = parseInt(document.getElementById('gen-volt-slider').value);
+  document.getElementById('gen-volt-val').textContent = genVoltage + ' kV';
+  const stepRatio = 400 / 24;
+  const stepV = stepUpEnabled ? Math.round(genVoltage * stepRatio) : genVoltage;
+  document.getElementById('d-gen-v').textContent = genVoltage + ' kV';
+  document.getElementById('d-step-v').textContent = stepUpEnabled ? stepV + ' kV' : 'Bypassed';
+  document.getElementById('d-trans-v').textContent = stepV + ' kV';
+  document.getElementById('d-step-s').textContent = stepUpEnabled ? 'High Voltage' : 'OFF';
+  document.getElementById('d-step-s').style.color = stepUpEnabled ? 'var(--yellow)' : 'var(--red)';
+}
+updateGeneration();
+
+let screen1Done = false;
+function completeScreen1() {
+  const msg = document.getElementById('s1-msg');
+  msg.className = 'sim-msg show correct';
+  msg.textContent = '✅ Generation setup complete! Step-up transformer boosts voltage for efficient transmission.';
+  markSimGoal(1);
+  if (!screen1Done) { screen1Done = true; awardXP(10, 'Generation setup!'); }
+  setTimeout(() => { switchScreen(2); updateDistribution(); }, 1200);
+}
+
+/* Screen 2 — Distribution */
+let distributionDone = false;
+function updateDistribution() {
+  const load = parseInt(document.getElementById('load-slider').value);
+  const loadKw = load * 0.1;
+  document.getElementById('load-val').textContent = loadKw.toFixed(1) + ' kW';
+  kWhUsed += 0.01;
+  document.getElementById('ds-kwh').textContent = kWhUsed.toFixed(2) + ' kWh';
+  document.getElementById('ds-loss').textContent = load > 15 ? 'HIGH ⚠️' : load > 8 ? 'Medium' : 'Low';
+  document.getElementById('ds-loss').style.color = load > 15 ? 'var(--red)' : load > 8 ? 'var(--orange)' : 'var(--green)';
+  // Animate flow arrows
+  ['fa-1','fa-2','fa-3','fa-4'].forEach((id,i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('active');
+    }, i * 200);
+  });
+  document.getElementById('fp-plant').textContent = '400 kV';
+  document.getElementById('fp-sub1').textContent = '33 kV';
+  document.getElementById('fp-sub2').textContent = '11 kV';
+  document.getElementById('fp-meter').textContent = '220 V';
+  document.getElementById('fp-home').textContent = '220 V';
+}
+
+let screen2Done = false;
+function completeScreen2() {
+  const msg = document.getElementById('s2-msg');
+  msg.className = 'sim-msg show correct';
+  msg.textContent = '✅ Distribution understood! 400kV → 33kV → 11kV → 220V for safe home delivery.';
+  markSimGoal(2);
+  if (!screen2Done) { screen2Done = true; awardXP(10, 'Distribution complete!'); }
+  showFunFact('The Philippine power grid uses 230V, 60Hz AC — slightly different from Europe\'s 220V, 50Hz!');
+  setTimeout(() => switchScreen(3), 1200);
+}
+
+/* Screen 3 — Safety */
+let hazardCount = 0;
+function triggerHazard(type) {
+  const riskFill = document.getElementById('risk-fill');
+  const riskVal = document.getElementById('risk-val');
+  const result = document.getElementById('safety-result');
+  const msgs = {
+    cord: { msg: '⚠️ Frayed cord! Electric current can arc through the damaged insulation — causing fire or electrocution.', risk: 75 },
+    wet: { msg: '💧 Wet hands + electricity = extreme danger! Water conducts electricity — this causes lethal shocks.', risk: 90 },
+    over: { msg: '🔌 Circuit overloaded! Too many appliances cause wires to overheat — fire hazard! Trip the breaker!', risk: 60 }
+  };
+  const m = msgs[type];
+  riskFill.style.width = m.risk + '%';
+  riskVal.textContent = m.risk > 70 ? 'CRITICAL ⚠️' : 'HIGH';
+  riskVal.style.color = m.risk > 70 ? 'var(--red)' : 'var(--orange)';
+  result.style.cssText = 'display:block;background:rgba(239,68,68,.12);border:1px solid var(--red);color:var(--red)';
+  result.textContent = m.msg;
+  // Show fix button
+  document.getElementById('fix-' + type).style.display = '';
+}
+
+function applyFix(type) {
+  if (hazardsFixed.has(type)) return;
+  hazardsFixed.add(type);
+  document.getElementById('hazard-' + type).classList.add('safe');
+  document.getElementById('hazard-' + type).classList.remove('danger');
+  document.getElementById('fix-' + type).style.display = 'none';
+  hazardCount++;
+  document.getElementById('hazard-count').textContent = hazardCount + ' / 3';
+  const result = document.getElementById('safety-result');
+  result.style.cssText = 'display:block;background:rgba(34,197,94,.12);border:1px solid var(--green);color:var(--green)';
+  const fixes = { cord:'✅ Cord replaced! Always unplug by the plug and inspect cords regularly.', wet:'✅ Hands dried! Never handle electrical devices with wet hands.', over:'✅ Circuit restored! Distribute appliances across different outlets.' };
+  result.textContent = fixes[type];
+  const riskFill = document.getElementById('risk-fill');
+  riskFill.style.width = Math.max(5, parseInt(riskFill.style.width) - 25) + '%';
+  if (hazardCount >= 3) {
+    document.getElementById('risk-fill').style.width = '5%';
+    document.getElementById('risk-val').textContent = 'Safe ✅';
+    document.getElementById('risk-val').style.color = 'var(--green)';
+    document.getElementById('s3-msg').className = 'sim-msg show correct';
+    document.getElementById('s3-msg').textContent = '🎉 All hazards fixed! You\'re an electrical safety expert!';
+    markSimGoal(3);
+    awardXP(15, 'Safety expert!');
+    document.getElementById('to-motgen-btn').disabled = false;
+    const u = loadUser();
+    u.lesson3.hazardsFixed = 3;
+    saveUser(u);
+  }
+}
+
+/* Screen 4 — Motor vs Generator */
+let mgMode = 'motor';
+function setMGMode(mode) {
+  mgMode = mode;
+  document.getElementById('mode-motor').classList.toggle('active', mode === 'motor');
+  document.getElementById('mode-gen').classList.toggle('active', mode === 'generator');
+  document.getElementById('mg-box-motor').classList.toggle('active', mode === 'motor');
+  document.getElementById('mg-box-gen').classList.toggle('active', mode === 'generator');
+
+  const isMotor = mode === 'motor';
+  document.getElementById('mg-mode-display').textContent = isMotor ? 'Motor' : 'Generator';
+  document.getElementById('mg-input-display').textContent = isMotor ? 'Electrical' : 'Mechanical';
+  document.getElementById('mg-output-display').textContent = isMotor ? 'Mechanical' : 'Electrical';
+  document.getElementById('mg-rule-display').textContent = isMotor ? 'Left-Hand' : 'Right-Hand';
+
+  if (mode === 'motor') mgExplored = true;
+  if (mode === 'generator') genExplored = true;
+
+  if (mgExplored && genExplored) {
+    markSimGoal(4);
+    awardXP(10, 'Both modes explored!');
+    document.getElementById('s4-msg').className = 'sim-msg show correct';
+    document.getElementById('s4-msg').textContent = '✅ Great! You\'ve explored both Motor and Generator modes!';
+    document.getElementById('to-analysis-btn').disabled = false;
+    const u = loadUser();
+    u.lesson3.mgExplored = true;
+    saveUser(u);
+  }
+}
+
+function markSimGoal(n) {
+  if (goalsCompleted.has(n)) return;
+  goalsCompleted.add(n);
+  const pill = document.getElementById('sim-goal-' + n);
+  if (pill) pill.classList.add('done');
+  document.getElementById('goals-count').textContent = goalsCompleted.size + ' / 4';
+  const u = loadUser();
+  u.lesson3.goalsCompleted = goalsCompleted.size;
+  saveUser(u);
+}
+
+function completeScreen3() {
+  if (hazardCount < 3) {
+    const msg = document.getElementById('s3-msg');
+    msg.className = 'sim-msg show info';
+    msg.textContent = '⚠️ Fix all 3 hazards first! Click each red button then apply the fix.';
+    return;
+  }
+  switchScreen(4);
+}
+
+/* ════════════════════════════════════════
+   PHASE 4 — ANALYSIS
+════════════════════════════════════════ */
+function showAnalysis() {
+  const genPct = goalsCompleted.has(1) ? 100 : 0;
+  const distPct = goalsCompleted.has(2) ? 100 : 0;
+  const safePct = Math.round((hazardCount / 3) * 100);
+  const mgPct   = (mgExplored && genExplored) ? 100 : mgExplored || genExplored ? 50 : 0;
+
+  document.getElementById('pa-gen-val').textContent = genPct + '%';
+  document.getElementById('pa-dist-val').textContent = distPct + '%';
+  document.getElementById('pa-safe-val').textContent = hazardCount + ' / 3';
+  document.getElementById('pa-mg-val').textContent = mgPct + '%';
+
+  setTimeout(() => {
+    document.getElementById('pa-gen-bar').style.width = genPct + '%';
+    document.getElementById('pa-dist-bar').style.width = distPct + '%';
+    document.getElementById('pa-safe-bar').style.width = safePct + '%';
+    document.getElementById('pa-mg-bar').style.width = mgPct + '%';
+  }, 200);
+
+  const overall = (genPct + distPct + safePct + mgPct) / 4;
+  const tip = document.getElementById('pa-tip-box');
+  if (overall === 100) tip.textContent = '🌟 Perfect! You completed all 4 experiments. You clearly understand how electricity is generated, distributed, used safely, and the motor/generator relationship!';
+  else if (overall >= 50) tip.textContent = '💪 Good progress! You explored most of the Power Quest. Head back if you want to complete remaining experiments for full understanding.';
+  else tip.textContent = '📚 Keep exploring! Complete each screen in the Power Quest to fully understand electricity generation and distribution.';
+  awardXP(15, 'Analysis reviewed');
+}
+
+/* ════════════════════════════════════════
+   PHASE 5 — FINAL QUIZ
+════════════════════════════════════════ */
+const QUIZ_QUESTIONS = [
+  { q: 'What role does a substation (grid station) play in the electricity distribution system?',
+    opts: ['A. It generates electricity from fuel', 'B. It steps down high voltage to safe levels', 'C. It measures kWh consumption for billing', 'D. It stores electricity for night-time use'],
+    ans: 1, exp: 'Substations use step-down transformers to reduce voltage from transmission levels (400kV) to usable home levels (220V).' },
+  { q: 'An electric meter reads 150 kWh this month. What does this measure?',
+    opts: ['A. The voltage in your home', 'B. How fast electricity travels to your home', 'C. The total electrical energy you consumed', 'D. The number of appliances you used'],
+    ans: 2, exp: 'kWh = kilowatt-hours. The meter totals all power used over time: Energy = Power × Time.' },
+  { q: 'Why is electricity transmitted at very HIGH voltage over long distances?',
+    opts: ['A. Lower current → less heat loss in wires (P_loss = I²R)', 'B. High voltage appliances need high input voltage', 'C. High voltage is safer for workers to handle', 'D. It makes electricity travel to homes faster'],
+    ans: 0, exp: 'High voltage means lower current for the same power (P=VI). Less current dramatically reduces heat losses in cables.' },
+  { q: 'A 500W appliance runs for 4 hours. How much electrical energy does it use?',
+    opts: ['A. 2 kWh', 'B. 125 kWh', 'C. 500 kWh', 'D. 2000 kWh'],
+    ans: 0, exp: 'Energy = 0.5kW × 4h = 2 kWh. Always convert watts to kilowatts first (÷1000).' },
+  { q: 'A motor and a generator both use coils and magnets. What makes them DIFFERENT?',
+    opts: ['A. Generators use permanent magnets; motors use electromagnets', 'B. They are completely identical — no difference at all', 'C. Motors can only work with AC; generators only with DC', 'D. Direction of energy conversion — motor uses electricity, generator produces it'],
+    ans: 3, exp: 'Same device, opposite energy flow. Motor: electricity → motion. Generator: motion → electricity.' },
+  { q: 'You see a frayed electrical cord on a household appliance. What is the SAFEST action?',
+    opts: ['A. Cover it with electrical tape and keep using it', 'B. Unplug it by the plug and have it replaced', 'C. Wrap it in cloth to insulate the exposed wire', 'D. It is fine as long as the appliance still works'],
+    ans: 1, exp: 'Frayed cords expose live wires — fire and electrocution hazards. Always unplug by the plug, never the cord.' },
+  { q: 'What is electromagnetic induction, and why is it important for both motors and generators?',
+    opts: ['A. Induction is heating metal with magnets only', 'B. It is the principle that allows coils and magnets to convert between motion and electricity', 'C. It only applies to DC current, not AC', 'D. Induction is how substations step down voltage'],
+    ans: 1, exp: 'Electromagnetic induction: a changing magnetic field induces current in a coil (and vice versa). This is the principle behind both motors and generators.' },
+  { q: 'Which of these is a similarity between an electric motor and a generator?',
+    opts: ['A. Both generate electricity as their output', 'B. Both require water to operate', 'C. Both use coils of wire and magnets', 'D. Both convert motion into electricity'],
+    ans: 2, exp: 'Both devices use coils of wire in magnetic fields and work through electromagnetic induction — they are fundamentally the same machine.' },
+  { q: 'What happens to a circuit if too many appliances are plugged in at once (overloading)?',
+    opts: ['A. The voltage automatically adjusts to handle the extra load', 'B. The appliances run slower to compensate', 'C. Wires overheat, potentially causing a fire', 'D. Nothing — modern circuits can handle any load'],
+    ans: 2, exp: 'Overloaded circuits carry more current than wires can safely handle, generating dangerous heat that can start fires.' },
+  { q: 'In the electricity distribution path, which sequence is correct?',
+    opts: ['A. Power plant → Home → Substation → Transmission', 'B. Substation → Power plant → Transmission → Home', 'C. Power plant → Step-up → Transmission → Substation → Home', 'D. Transmission line → Power plant → Step-down → Home'],
+    ans: 2, exp: 'Plant generates → Step-up transformer raises voltage → High-voltage transmission lines → Substations step down → Meters → Homes.' },
+];
+
+let qIndex = 0, qScore = 0, quizAnswered = false;
+
+function initQuiz() { qIndex = 0; qScore = 0; showQuestion(); }
+
+function showQuestion() {
+  const q = QUIZ_QUESTIONS[qIndex];
+  document.getElementById('q-num').textContent = qIndex + 1;
+  document.getElementById('q-score-live').textContent = qScore;
+  document.getElementById('q-prog-fill').style.width = ((qIndex / QUIZ_QUESTIONS.length) * 100) + '%';
+  document.getElementById('q-text').textContent = q.q;
+  const opts = document.getElementById('q-options');
+  opts.innerHTML = '';
+  q.opts.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt'; btn.textContent = o;
+    btn.onclick = () => answerQuiz(i);
+    opts.appendChild(btn);
+  });
+  document.getElementById('q-feedback').className = 'quiz-feedback';
+  document.getElementById('q-feedback').textContent = '';
+  document.getElementById('q-next-btn').style.display = 'none';
+  quizAnswered = false;
+}
+
+function answerQuiz(chosen) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const q = QUIZ_QUESTIONS[qIndex];
+  const opts = document.querySelectorAll('.quiz-opt');
+  opts.forEach(b => b.disabled = true);
+  const ok = chosen === q.ans;
+  opts[chosen].classList.add(ok ? 'correct' : 'wrong');
+  if (!ok) opts[q.ans].classList.add('correct');
+  const fb = document.getElementById('q-feedback');
+  fb.className = 'quiz-feedback show ' + (ok ? 'correct' : 'wrong');
+  fb.textContent = (ok ? '✓ Correct! ' : '✗ Incorrect. ') + q.exp;
+  if (ok) { qScore++; awardXP(10, 'Quiz question correct'); }
+  document.getElementById('q-score-live').textContent = qScore;
+  if (qIndex < QUIZ_QUESTIONS.length - 1) {
+    document.getElementById('q-next-btn').style.display = 'inline-flex';
+  } else {
+    setTimeout(() => goPhase(6), 1200);
+  }
+}
+
+function nextQuestion() { qIndex++; showQuestion(); }
+
+/* ════════════════════════════════════════
+   PHASE 6 — RESULTS
+════════════════════════════════════════ */
+function showResults() {
+  document.getElementById('final-score-num').textContent = qScore + ' / 10';
+  const pct = (qScore / QUIZ_QUESTIONS.length) * 100;
+
+  const badges = [];
+  if (pct === 100) badges.push({icon:'🏆', name:'PERFECT SCORE'});
+  if (pct >= 80)  badges.push({icon:'⚡', name:'POWER MASTER'});
+  if (pct >= 60)  badges.push({icon:'🔌', name:'CIRCUIT EXPERT'});
+  if (pct < 60)   badges.push({icon:'📚', name:'KEEP STUDYING'});
+  if (hazardCount >= 3) badges.push({icon:'🛡️', name:'SAFETY EXPERT'});
+  if (mgExplored && genExplored) badges.push({icon:'⚙️', name:'MOTOR/GEN PRO'});
+  if (goalsCompleted.size >= 4) badges.push({icon:'🌟', name:'LAB COMPLETE'});
+
+  const grid = document.getElementById('badge-grid');
+  grid.innerHTML = '';
+  badges.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = 'badge-card';
+    d.style.animationDelay = (i * 0.15) + 's';
+    d.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-name">${b.name}</div>`;
+    grid.appendChild(d);
+  });
+
+  // Save completion — FIRST, before XP award
+  const u = loadUser();
+  u.lesson3.quizScore = qScore;
+  u.lesson3.complete = true;
+  u.lesson3.phase = 6;
+  if (!u.lessons) u.lessons = {1:{pct:0,unlocked:true},2:{pct:0,unlocked:false},3:{pct:0,unlocked:false},4:{pct:0,unlocked:false}};
+  u.lessons[3].pct = 100;
+  if (u.lessons[4]) u.lessons[4].unlocked = true;
+  if (pct >= 80) { u.dailyGoals = u.dailyGoals || {}; u.dailyGoals.quizPassed = true; }
+  saveUser(u);
+
+  const quizXP = qScore * 10 + (pct >= 80 ? 50 : 0);
+  awardXP(quizXP, 'Quiz complete');
+}
+
+/* ════════════════════════════════════════
+   SYNC TO DASHBOARD
+════════════════════════════════════════ */
+function syncLesson3Progress() {
+  try {
+    const u = loadUser();
+    const l3 = u.lesson3 || {};
+    let pct = 0;
+    if (l3.phase >= 2) pct = Math.max(pct, 15);
+    if (l3.phase >= 3) pct = Math.max(pct, 30);
+    if ((l3.goalsCompleted || 0) >= 1) pct = Math.max(pct, 40);
+    if ((l3.goalsCompleted || 0) >= 2) pct = Math.max(pct, 55);
+    if ((l3.goalsCompleted || 0) >= 3) pct = Math.max(pct, 65);
+    if ((l3.goalsCompleted || 0) >= 4) pct = Math.max(pct, 75);
+    if (l3.phase >= 4) pct = Math.max(pct, 80);
+    if (l3.phase >= 5) pct = Math.max(pct, 85);
+    if ((l3.quizScore || 0) > 0) pct = Math.max(pct, Math.round(80 + (l3.quizScore / 10) * 20));
+    if (l3.complete) { pct = 100; }
+    if (!u.lessons) u.lessons = {1:{pct:0,unlocked:true},2:{pct:0,unlocked:false},3:{pct:0,unlocked:false},4:{pct:0,unlocked:false}};
+    if (!u.lessons[3]) u.lessons[3] = {pct:0, unlocked:true};
+    u.lessons[3].pct = Math.max(u.lessons[3].pct || 0, pct);
+    if (l3.complete) {
+      u.lessons[3].pct = 100;
+      if (u.lessons[4]) u.lessons[4].unlocked = true;
+    }
+    saveUser(u);
+  } catch(e) {}
+}
+
+syncSidebar();
+syncLesson3Progress();
+
+// Resume to saved phase if returning to lesson
+resumeToSavedPhase();
+  // Handle ?phase= deep-link from Games tab
+  if (window.ALECS && window.ALECS.handlePhaseDeepLink) window.ALECS.handlePhaseDeepLink(goPhase);
+
+</script>
+</body>
+</html>

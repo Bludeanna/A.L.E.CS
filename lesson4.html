@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ALECS — Analyzing Laws, Energy &amp; Computational Simulations – Lesson 4: Energy Sources</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ── TOKENS ── */
+:root {
+  --navy:    #0d1b2a;
+  --navy2:   #132233;
+  --navy3:   #1a2e45;
+  --card:    #1e3450;
+  --card2:   #243d5c;
+  --orange:  #ff6b2b;
+  --orange2: #ff8c52;
+  --yellow:  #ffd700;
+  --green:   #22c55e;
+  --red:     #ef4444;
+  --purple:  #9b59b6;
+  --text:    #e8f0fe;
+  --muted:   #7a9cc0;
+  --border:  rgba(255,255,255,.08);
+  --radius:  14px;
+  --ff-head: 'Orbitron', sans-serif;
+  --ff-body: 'Nunito', sans-serif;
+  --accent:  #16a34a;   /* deep green for L4 energy */
+  --accent2: #4ade80;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--navy);
+  color: var(--text);
+  font-family: var(--ff-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image:
+    linear-gradient(rgba(22,163,74,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(22,163,74,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 28px;
+  background: var(--navy2);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 200;
+}
+#topbar-left { display: flex; align-items: center; gap: 12px; }
+.logo-link { font-family: var(--ff-head); font-size: 1.15rem; color: var(--accent2); text-decoration: none; display: flex; align-items: center; gap: 7px; }
+.lesson-badge { background: var(--accent); color: #fff; font-size: .72rem; font-weight: 800; padding: 3px 12px; border-radius: 20px; letter-spacing: .5px; text-transform: uppercase; }
+#topbar-right { display: flex; align-items: center; gap: 14px; }
+.xp-live { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); }
+.xp-live strong { color: var(--yellow); font-weight: 800; font-family: var(--ff-head); }
+.streak-pill { background: rgba(249,115,22,.15); border: 1px solid rgba(249,115,22,.3); color: var(--orange); padding: 2px 10px; border-radius: 99px; font-size: .78rem; font-weight: 700; }
+
+/* ── XP BAR ── */
+#xp-bar-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 28px; background: var(--navy3);
+  border-bottom: 1px solid var(--border);
+  font-size: .8rem; font-weight: 700;
+}
+#level-lbl { color: var(--yellow); white-space: nowrap; font-family: var(--ff-head); font-size: .75rem; }
+#xp-track { flex: 1; height: 8px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
+#xp-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--yellow)); transition: width .6s ease; }
+#xp-lbl { color: var(--muted); white-space: nowrap; min-width: 90px; text-align: right; }
+
+/* ── PHASE STEPPER ── */
+#phase-stepper {
+  display: flex; justify-content: center;
+  background: var(--navy2); border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+#phase-stepper::-webkit-scrollbar { display: none; }
+.step-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 16px 12px; border-bottom: 3px solid transparent;
+  transition: all .3s; cursor: default; min-width: 70px;
+}
+.step-item.active { border-color: var(--accent); }
+.step-item.done   { border-color: var(--green); }
+.step-bubble {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 800;
+  background: var(--card); border: 2px solid var(--muted); color: var(--muted);
+  margin-bottom: 5px; transition: all .3s;
+}
+.step-item.active .step-bubble { background: var(--accent); border-color: var(--accent); color: #fff; }
+.step-item.done   .step-bubble { background: var(--green); border-color: var(--green); color: #fff; }
+.step-label { font-size: .63rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); white-space: nowrap; }
+.step-item.active .step-label { color: var(--accent2); }
+.step-item.done   .step-label { color: var(--green); }
+
+/* ── LAYOUT ── */
+#page-body { display: flex; min-height: calc(100vh - 120px); }
+
+/* ── SIDEBAR ── */
+#lesson-sidebar {
+  width: 220px; flex-shrink: 0; background: var(--navy2);
+  border-right: 1px solid var(--border); padding: 20px 0 40px;
+  position: sticky; top: 120px;
+  height: calc(100vh - 120px); overflow-y: auto; scrollbar-width: none;
+}
+#lesson-sidebar::-webkit-scrollbar { display: none; }
+.sb-section-label { font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); padding: 0 18px; margin-bottom: 8px; margin-top: 20px; }
+.sb-section-label:first-child { margin-top: 0; }
+.sb-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 18px; background: none; border: none; border-left: 3px solid transparent; color: var(--muted); font-family: var(--ff-body); font-size: .88rem; font-weight: 700; cursor: pointer; text-align: left; text-decoration: none; transition: color .2s, background .2s, border-color .2s; }
+.sb-btn:hover { background: rgba(22,163,74,.06); color: var(--text); border-color: var(--accent); }
+.sb-btn.danger:hover { background: rgba(239,68,68,.08); color: var(--red); border-color: var(--red); }
+.sb-btn .sb-icon { font-size: 1rem; width: 22px; text-align: center; }
+.sb-phase-list { padding: 0; list-style: none; }
+.sb-phase-item { display: flex; align-items: center; gap: 10px; padding: 8px 18px; font-size: .82rem; font-weight: 700; color: var(--muted); transition: color .2s; }
+.sb-phase-item.active { color: var(--accent2); }
+.sb-phase-item.done   { color: var(--green); }
+.sb-phase-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background .3s; }
+.sb-phase-item.active .sb-phase-dot { background: var(--accent); }
+.sb-phase-item.done   .sb-phase-dot { background: var(--green); }
+.sb-divider { height: 1px; background: var(--border); margin: 14px 18px; }
+
+/* ── CONTENT ── */
+#lesson-content { flex: 1; min-width: 0; padding: 28px 28px 80px; }
+.phase-block { display: none; }
+.phase-block.active { display: block; }
+
+/* ── CONFIRM MODAL ── */
+#confirm-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9999; align-items: center; justify-content: center; }
+#confirm-modal.open { display: flex; }
+#confirm-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px; max-width: 380px; width: 90%; text-align: center; }
+#confirm-box h3 { font-family: var(--ff-head); font-size: 1rem; color: var(--text); margin-bottom: 10px; }
+#confirm-box p  { font-size: .88rem; color: var(--muted); line-height: 1.6; margin-bottom: 22px; }
+
+/* ── SECTION HEADER ── */
+.section-header { text-align: center; margin-bottom: 26px; }
+.phase-tag { display: inline-block; background: var(--accent); color: #fff; font-size: .7rem; font-weight: 800; padding: 3px 12px; border-radius: 12px; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+.section-header h2 { font-family: var(--ff-head); font-size: 1.5rem; color: var(--text); margin-bottom: 8px; }
+.section-header p { color: var(--muted); font-size: .92rem; line-height: 1.6; max-width: 560px; margin: 0 auto; }
+
+/* ── CARDS ── */
+.l1-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 16px; }
+.l1-card-title { font-family: var(--ff-head); font-size: .85rem; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+
+/* ── BUTTONS ── */
+.l1-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 26px; border: none; border-radius: 10px; font-family: var(--ff-body); font-weight: 800; font-size: .93rem; cursor: pointer; transition: .2s; }
+.l1-btn-primary  { background: var(--accent); color: #fff; }
+.l1-btn-primary:hover  { filter: brightness(1.15); transform: translateY(-1px); }
+.l1-btn-secondary { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
+.l1-btn-secondary:hover { background: var(--navy3); }
+.l1-btn-green    { background: var(--green); color: #fff; }
+.l1-btn-green:hover { filter: brightness(1.1); }
+.l1-btn-sm { padding: 7px 16px; font-size: .82rem; }
+.l1-btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+
+/* ── KNOWLEDGE CHECK ── */
+.kc-question { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+.kc-q-text { font-weight: 700; font-size: .96rem; line-height: 1.55; margin-bottom: 14px; }
+.kc-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kc-opt { background: var(--navy3); border: 2px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: pointer; font-family: var(--ff-body); font-size: .88rem; font-weight: 600; color: var(--text); text-align: left; transition: border-color .2s, background .2s; }
+.kc-opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(22,163,74,.08); }
+.kc-opt.correct { background: rgba(34,197,94,.12); border-color: var(--green); color: var(--green); }
+.kc-opt.wrong   { background: rgba(239,68,68,.12); border-color: var(--red); color: var(--red); }
+.kc-opt:disabled { cursor: default; }
+.kc-feedback { margin-top: 10px; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: .86rem; display: none; }
+.kc-feedback.show { display: block; }
+.kc-feedback.correct { background: rgba(34,197,94,.12); border: 1px solid var(--green); color: var(--green); }
+.kc-feedback.wrong   { background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+
+/* ── CONCEPTS ── */
+.compare-table { width: 100%; border-collapse: collapse; font-size: .86rem; margin-bottom: 16px; }
+.compare-table th { background: var(--navy3); padding: 10px 14px; font-family: var(--ff-head); font-size: .72rem; letter-spacing: .5px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.compare-table td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; line-height: 1.5; }
+.compare-table tr:hover td { background: rgba(255,255,255,.02); }
+.tag-r { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: .78rem; }
+.tag-nr { background: rgba(239,68,68,.12); color: var(--red); border: 1px solid rgba(239,68,68,.3); padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: .78rem; }
+
+/* ── SIMULATION GAME ── */
+.sim-panel { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+.sim-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.sim-title { font-family: var(--ff-head); font-size: .85rem; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; }
+.sim-screen-badge { background: var(--navy3); border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.sim-body { padding: 20px 18px; }
+.sim-controls-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 16px; }
+.sim-ctrl { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+.sim-ctrl label { font-size: .78rem; font-weight: 700; color: var(--muted); }
+.sim-ctrl select, .sim-ctrl input[type=range] { font-family: var(--ff-body); font-size: .88rem; background: var(--navy3); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.sim-ctrl input[type=range] { padding: 4px 0; accent-color: var(--accent); height: 6px; }
+.range-val { font-family: var(--ff-head); font-size: .82rem; color: var(--yellow); min-width: 60px; }
+.sim-msg { padding: 12px 16px; border-radius: 10px; font-weight: 700; font-size: .9rem; text-align: center; margin-top: 12px; display: none; }
+.sim-msg.show.correct { display: block; background: rgba(34,197,94,.15); border: 1px solid var(--green); color: var(--green); }
+.sim-msg.show.info    { display: block; background: rgba(22,163,74,.1); border: 1px solid var(--accent); color: var(--accent2); }
+.sim-msg.show.wrong   { display: block; background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+
+/* ── ECO SCORE ── */
+#eco-score-wrap { display: flex; align-items: center; gap: 16px; background: var(--navy3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px; }
+#eco-bar-track { flex: 1; height: 18px; background: rgba(255,255,255,.07); border-radius: 99px; overflow: hidden; }
+#eco-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--red), var(--orange), var(--yellow), var(--green)); transition: width .8s ease; }
+#eco-label { font-family: var(--ff-head); font-size: .88rem; color: var(--yellow); min-width: 60px; text-align: right; }
+.eco-grade { font-size: 1.1rem; font-weight: 800; min-width: 90px; text-align: center; }
+
+/* ── IMPACT TABLE ── */
+.impact-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-bottom: 12px; }
+.impact-table th { background: var(--navy3); padding: 8px 14px; font-family: var(--ff-head); font-size: .7rem; letter-spacing: .5px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.impact-table td { padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.impact-low  { color: var(--green); font-weight: 700; }
+.impact-med  { color: var(--yellow); font-weight: 700; }
+.impact-high { color: var(--red); font-weight: 700; }
+
+/* ── ANIMATION CANVAS ── */
+#sim-canvas { width: 100%; height: 160px; background: var(--navy3); border-radius: 10px; margin-bottom: 12px; display: block; }
+
+/* ── COMMUNITY BUTTONS ── */
+.community-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.community-btn { padding: 16px 8px; border-radius: 10px; border: 2px solid var(--border); background: var(--navy3); color: var(--muted); font-family: var(--ff-body); font-weight: 800; font-size: .84rem; cursor: pointer; transition: .25s; text-align: center; line-height: 1.5; }
+.community-btn:hover { transform: translateY(-2px); border-color: var(--accent); color: var(--accent2); }
+.community-btn.applied { border-color: var(--green); background: rgba(34,197,94,.1); color: var(--green); }
+.community-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+/* ── QUIZ ── */
+.quiz-counter { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: .85rem; font-weight: 700; }
+.quiz-prog-track { height: 5px; background: var(--navy3); border-radius: 99px; overflow: hidden; margin-bottom: 20px; }
+.quiz-prog-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+.quiz-q { font-size: 1rem; font-weight: 700; line-height: 1.6; margin-bottom: 20px; }
+.quiz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.quiz-opt { background: var(--navy3); border: 2px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; font-family: var(--ff-body); font-size: .88rem; font-weight: 600; color: var(--text); text-align: left; transition: border-color .2s, background .2s; }
+.quiz-opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(22,163,74,.08); }
+.quiz-opt.correct { background: rgba(34,197,94,.12); border-color: var(--green); color: var(--green); }
+.quiz-opt.wrong   { background: rgba(239,68,68,.12); border-color: var(--red); color: var(--red); }
+.quiz-opt:disabled { cursor: default; }
+.quiz-feedback { margin-top: 8px; padding: 10px 14px; border-radius: 8px; font-weight: 700; font-size: .88rem; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct { background: rgba(34,197,94,.12); border: 1px solid var(--green); color: var(--green); }
+.quiz-feedback.wrong   { background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+
+/* ── ANALYSIS BARS ── */
+.pa-bar-wrap { margin-bottom: 16px; }
+.pa-bar-label { display: flex; justify-content: space-between; font-size: .85rem; font-weight: 700; margin-bottom: 5px; }
+.pa-bar-track { height: 12px; background: var(--navy3); border-radius: 6px; overflow: hidden; }
+.pa-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--yellow)); transition: width .8s ease; }
+
+/* ── BADGE GRID ── */
+.badge-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 18px 0; }
+.badge-card { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; text-align: center; min-width: 110px; animation: badgePop .4s ease both; }
+@keyframes badgePop { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+.badge-icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+.badge-name { font-family: var(--ff-head); font-size: .68rem; letter-spacing: .5px; color: var(--accent2); }
+
+/* ── XP TOAST ── */
+#xp-toast { position: fixed; bottom: 80px; right: 24px; background: var(--card); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 18px; font-weight: 800; font-size: .9rem; color: var(--yellow); opacity: 0; transform: translateY(10px); transition: .3s; pointer-events: none; z-index: 9999; }
+#xp-toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── FUN FACT ── */
+#funfact-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 22px; font-size: .88rem; color: var(--text); max-width: 520px; width: 90%; text-align: center; opacity: 0; pointer-events: none; transition: .4s; z-index: 9999; }
+#funfact-bar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── SCREEN TABS ── */
+.screen-tabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+.screen-tab { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--card2); color: var(--muted); font-weight: 700; font-size: .8rem; cursor: pointer; transition: .2s; white-space: nowrap; }
+.screen-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.screen-block { display: none; }
+.screen-block.active { display: block; }
+
+/* ── HELPERS ── */
+.text-center { text-align: center; }
+.mt-4 { margin-top: 16px; }
+.mt-2 { margin-top: 8px; }
+.gap-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.hidden { display: none !important; }
+
+/* ── PHASE 2: SORT & MATCH ── */
+.p2-source-chip { background: var(--card); border: 2px solid var(--border); border-radius: 20px; padding: 8px 16px; color: var(--text); font-family: var(--ff-body); font-weight: 700; font-size: .88rem; cursor: pointer; transition: .2s; }
+.p2-source-chip:hover { border-color: var(--accent); background: rgba(22,163,74,.08); }
+.p2-source-chip.selected { border-color: var(--yellow); background: rgba(255,215,0,.12); color: var(--yellow); }
+.p2-source-chip.placed { opacity: .35; cursor: default; text-decoration: line-through; pointer-events: none; }
+.p2-drop-zone { min-height: 120px; border: 2px dashed var(--border); border-radius: var(--radius); padding: 14px; cursor: pointer; transition: border-color .2s, background .2s; }
+.p2-drop-zone:hover { border-color: var(--accent); background: rgba(22,163,74,.04); }
+.p2-drop-zone.highlight { border-color: var(--yellow); background: rgba(255,215,0,.06); }
+.p2-zone-label { margin-bottom: 8px; }
+.p2-zone-items { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; margin-bottom: 6px; }
+.p2-zone-item { padding: 4px 12px; border-radius: 20px; font-size: .8rem; font-weight: 700; }
+.p2-zone-item.correct { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid var(--green); }
+.p2-zone-item.wrong   { background: rgba(239,68,68,.12); color: var(--red); border: 1px solid var(--red); animation: shake .3s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+.p2-zone-hint { font-size: .73rem; color: var(--muted); font-style: italic; }
+.p2-match-item { padding: 10px 14px; border-radius: 10px; border: 2px solid var(--border); background: var(--navy3); color: var(--text); font-family: var(--ff-body); font-weight: 700; font-size: .82rem; cursor: pointer; transition: .2s; text-align: center; line-height: 1.4; }
+.p2-match-item:hover { border-color: var(--accent); }
+.p2-match-item.selected { border-color: var(--yellow); background: rgba(255,215,0,.1); color: var(--yellow); }
+.p2-match-item.matched { border-color: var(--green); background: rgba(34,197,94,.1); color: var(--green); cursor: default; pointer-events: none; }
+.p2-match-item.wrong-flash { border-color: var(--red); background: rgba(239,68,68,.1); animation: shake .3s; }
+
+/* ── PHASE 3: ENERGY TYPE CARDS ── */
+.energy-type-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; background: var(--navy3); border: 2px solid var(--border); border-radius: 10px; cursor: pointer; font-family: var(--ff-body); font-weight: 700; transition: .2s; }
+.energy-type-card:hover { border-color: var(--accent); background: rgba(22,163,74,.06); }
+.energy-type-card.selected { border-color: var(--yellow); background: rgba(255,215,0,.1); }
+.energy-type-card.completed { border-color: var(--green); }
+.etc-icon { font-size: 1.4rem; }
+.etc-label { font-size: .72rem; color: var(--muted); }
+.energy-type-card.selected .etc-label { color: var(--yellow); }
+.etc-badge { position: absolute; top: 4px; right: 6px; font-size: .65rem; font-weight: 800; color: var(--green); }
+.community-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+
+/* ── PHASE REVISIT MODAL ── */
+#phase-nav-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 9999; align-items: center; justify-content: center; }
+#phase-nav-modal.open { display: flex; }
+#phase-nav-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; max-width: 420px; width: 92%; }
+#phase-nav-box h3 { font-family: var(--ff-head); font-size: .95rem; color: var(--text); margin-bottom: 6px; }
+#phase-nav-box p { font-size: .83rem; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+.pnav-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.pnav-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--navy3); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: .2s; }
+.pnav-item:hover { border-color: var(--accent); background: rgba(22,163,74,.06); }
+.pnav-item.locked { opacity: .35; cursor: not-allowed; }
+.pnav-item .pnav-name { font-weight: 700; font-size: .88rem; color: var(--text); }
+.pnav-item .pnav-status { font-size: .75rem; font-weight: 700; color: var(--green); }
+.tip-box { background: rgba(22,163,74,.08); border: 1px solid rgba(22,163,74,.25); border-radius: 10px; padding: 14px 18px; font-size: .88rem; line-height: 1.6; color: var(--text); margin-bottom: 14px; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.info-box { background: var(--navy3); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.info-box-title { font-family: var(--ff-head); font-size: .72rem; letter-spacing: .5px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; }
+.info-box p { font-size: .85rem; line-height: 1.6; color: var(--text); }
+
+/* ── GOALS STRIP ── */
+#sim-goals-strip { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; background: var(--navy2); border: 1px solid var(--border); margin-bottom: 16px; border-radius: var(--radius); }
+.goal-pill { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: .78rem; font-weight: 700; color: var(--muted); transition: .3s; }
+.goal-pill.done { background: rgba(34,197,94,.1); border-color: var(--green); color: var(--green); }
+.goal-pill .gp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: .3s; }
+.goal-pill.done .gp-dot { background: var(--green); }
+#goals-count { font-size: .82rem; font-weight: 800; color: var(--yellow); font-family: var(--ff-head); margin-left: auto; }
+</style>
+</head>
+<body>
+
+<!-- XP TOAST -->
+<div id="xp-toast">+0 XP</div>
+<!-- FUN FACT -->
+<div id="funfact-bar" id="funfact-bar"></div>
+
+<!-- PHASE NAV MODAL -->
+<div id="phase-nav-modal">
+  <div id="phase-nav-box">
+    <h3>📍 Phase Navigation</h3>
+    <p>View your status or revisit a completed phase. You can review but cannot re-earn XP or undo choices.</p>
+    <ul class="pnav-list" id="pnav-list"></ul>
+    <div class="gap-row" style="justify-content:center">
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="closePhaseNav()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirm-modal">
+  <div id="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="gap-row" style="justify-content:center">
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="closeConfirm()">Cancel</button>
+      <button class="l1-btn l1-btn-primary l1-btn-sm" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<header id="topbar">
+  <div id="topbar-left">
+    <a href="index.html" class="logo-link">🍃 ALECS</a>
+    <span class="lesson-badge">Lesson 4</span>
+  </div>
+  <div id="topbar-right">
+    <span class="xp-live">XP: <strong id="xp-display">0</strong></span>
+    <span class="streak-pill" id="streak-display">🔥 0-day streak</span>
+  </div>
+</header>
+
+<!-- XP BAR -->
+<div id="xp-bar-row">
+  <span id="level-lbl">⚡ Level 1</span>
+  <div id="xp-track"><div id="xp-fill" style="width:0%"></div></div>
+  <span id="xp-lbl">0 / 1000 XP</span>
+</div>
+
+<!-- PHASE STEPPER -->
+<div id="phase-stepper">
+  <div class="step-item active" id="step-1"><div class="step-bubble">1</div><div class="step-label">Prior Know.</div></div>
+  <div class="step-item" id="step-2"><div class="step-bubble">2</div><div class="step-label">Concepts</div></div>
+  <div class="step-item" id="step-3"><div class="step-bubble">3</div><div class="step-label">Simulator</div></div>
+  <div class="step-item" id="step-4"><div class="step-bubble">4</div><div class="step-label">Community</div></div>
+  <div class="step-item" id="step-5"><div class="step-bubble">5</div><div class="step-label">Analysis</div></div>
+  <div class="step-item" id="step-6"><div class="step-bubble">6</div><div class="step-label">Final Quiz</div></div>
+  <div class="step-item" id="step-7"><div class="step-bubble">7</div><div class="step-label">Results</div></div>
+</div>
+
+<!-- PAGE BODY -->
+<div id="page-body">
+
+<!-- SIDEBAR -->
+<nav id="lesson-sidebar">
+  <div class="sb-section-label">Navigate</div>
+  <a href="index.html" class="sb-btn"><span class="sb-icon">🏠</span> Main Menu</a>
+  <button class="sb-btn" onclick="openPhaseNav()"><span class="sb-icon">📍</span> Phase Navigation</button>
+  <button class="sb-btn danger" onclick="confirmRestart()"><span class="sb-icon">↺</span> Restart Lesson</button>
+  <div class="sb-divider"></div>
+  <div class="sb-section-label">Phases</div>
+  <ul class="sb-phase-list" id="sb-phase-list">
+    <li class="sb-phase-item active" id="sb-step-1"><div class="sb-phase-dot"></div>1 · Knowledge Check</li>
+    <li class="sb-phase-item" id="sb-step-2"><div class="sb-phase-dot"></div>2 · Concepts</li>
+    <li class="sb-phase-item" id="sb-step-3"><div class="sb-phase-dot"></div>3 · Energy Sim</li>
+    <li class="sb-phase-item" id="sb-step-4"><div class="sb-phase-dot"></div>4 · Community</li>
+    <li class="sb-phase-item" id="sb-step-5"><div class="sb-phase-dot"></div>5 · Analysis</li>
+    <li class="sb-phase-item" id="sb-step-6"><div class="sb-phase-dot"></div>6 · Final Quiz</li>
+    <li class="sb-phase-item" id="sb-step-7"><div class="sb-phase-dot"></div>7 · Results</li>
+  </ul>
+  <div class="sb-divider"></div>
+  <div class="sb-section-label">Your Stats</div>
+  <div style="padding:0 18px">
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px">Eco Score</div>
+    <div style="font-family:var(--ff-head);font-size:1.1rem;color:var(--accent2)" id="sb-eco-score">0%</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:10px;margin-bottom:4px">Current Streak</div>
+    <div style="font-size:.88rem;color:var(--orange);font-weight:700" id="sb-streak">🔥 0-day streak</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:10px;margin-bottom:4px">Phase Progress</div>
+    <div style="font-size:.88rem;color:var(--accent2);font-weight:700" id="sb-phase-prog">Phase 1 of 7</div>
+  </div>
+</nav>
+
+<!-- LESSON CONTENT -->
+<div id="lesson-content">
+
+<!-- ═══ PHASE 1 – KNOWLEDGE CHECK ═══ -->
+<div id="phase-1" class="phase-block active">
+  <div class="section-header">
+    <div class="phase-tag">Phase 1 · Knowledge Check</div>
+    <h2>🌍 What Do You Already Know?</h2>
+    <p>Answer all 5 questions about energy sources before moving on. No penalty for wrong answers!</p>
+  </div>
+  <div id="kc-questions-wrap"></div>
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" id="kc-next-btn" disabled onclick="goPhase(2)">Next: Concepts &amp; Energy Types 🌱 →</button>
+  </div>
+</div>
+
+<!-- ═══ PHASE 2 – CONCEPTS (INTERACTIVE) ═══ -->
+<div id="phase-2" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 2 · Sort &amp; Match</div>
+    <h2>⚡ Renewable or Not?</h2>
+    <p>Sort each energy source into the correct category, then match each source to its key fact. Complete both activities to continue!</p>
+  </div>
+
+  <!-- ACTIVITY 1: DRAG/CLICK SORT -->
+  <div class="l1-card" id="p2-sort-card">
+    <div class="l1-card-title">🗂️ Activity 1 — Sort the Energy Sources <span id="p2-sort-progress" style="color:var(--muted);font-size:.8rem;font-weight:600">(0 / 6 sorted)</span></div>
+    <p style="font-size:.86rem;color:var(--muted);margin-bottom:16px">Click each energy source, then click the correct column to place it.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:18px" id="p2-sources-pool">
+      <button class="p2-source-chip" data-src="solar" onclick="selectP2Chip(this)">☀️ Solar</button>
+      <button class="p2-source-chip" data-src="wind" onclick="selectP2Chip(this)">💨 Wind</button>
+      <button class="p2-source-chip" data-src="hydro" onclick="selectP2Chip(this)">💧 Hydro</button>
+      <button class="p2-source-chip" data-src="coal" onclick="selectP2Chip(this)">🪨 Coal</button>
+      <button class="p2-source-chip" data-src="oil" onclick="selectP2Chip(this)">🛢️ Oil</button>
+      <button class="p2-source-chip" data-src="gas" onclick="selectP2Chip(this)">🔥 Natural Gas</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="p2-drop-zone" id="zone-renewable" onclick="dropToZone('renewable')">
+        <div class="p2-zone-label"><span class="tag-r">♻️ Renewable</span></div>
+        <div class="p2-zone-items" id="zone-renewable-items"></div>
+        <div class="p2-zone-hint">Click here to place selected source</div>
+      </div>
+      <div class="p2-drop-zone" id="zone-nonrenewable" onclick="dropToZone('nonrenewable')">
+        <div class="p2-zone-label"><span class="tag-nr">🏭 Non-Renewable</span></div>
+        <div class="p2-zone-items" id="zone-nonrenewable-items"></div>
+        <div class="p2-zone-hint">Click here to place selected source</div>
+      </div>
+    </div>
+    <div class="sim-msg" id="p2-sort-msg" style="margin-top:12px"></div>
+  </div>
+
+  <!-- ACTIVITY 2: MATCH FACTS -->
+  <div class="l1-card" id="p2-match-card" style="opacity:.45;pointer-events:none">
+    <div class="l1-card-title">🔗 Activity 2 — Match the Fact <span id="p2-match-progress" style="color:var(--muted);font-size:.8rem;font-weight:600">(0 / 4 matched)</span></div>
+    <p style="font-size:.86rem;color:var(--muted);margin-bottom:14px">Click a source on the left, then click the matching fact on the right.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="p2-match-grid"></div>
+    <div class="sim-msg" id="p2-match-msg" style="margin-top:12px"></div>
+  </div>
+
+  <!-- FORMULA REVEAL (unlocked after both activities) -->
+  <div class="l1-card" id="p2-formula-card" style="display:none">
+    <div class="l1-card-title">💡 Key Formula Unlocked!</div>
+    <div class="tip-box" style="text-align:center">
+      <span style="font-family:var(--ff-head);color:var(--yellow);font-size:1rem">Total Impact = Energy Used × Emission Factor</span><br>
+      <span style="color:var(--muted);font-size:.85rem;display:block;margin-top:8px">The more non-renewable energy used, the higher the environmental damage. Renewables bring the emission factor close to <strong style="color:var(--green)">zero</strong>.</span>
+    </div>
+  </div>
+
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" id="p2-next-btn" disabled onclick="goPhase(3)">Next: Energy Simulator 🔬 →</button>
+  </div>
+</div>
+
+<!-- ═══ PHASE 3 – ENERGY SIMULATOR (MULTI-SIM) ═══ -->
+<div id="phase-3" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 3 · Energy Source Explorer</div>
+    <h2>🔬 Tralalelo Energy Simulator</h2>
+    <p>Try all 6 energy simulations! Each has unique questions. Switch to <strong>Stats View</strong> after completing a sim to compare results.</p>
+  </div>
+
+  <!-- GOALS STRIP -->
+  <div id="sim-goals-strip">
+    <div class="goal-pill" id="goal-1"><div class="gp-dot"></div>Try Renewable</div>
+    <div class="goal-pill" id="goal-2"><div class="gp-dot"></div>Try Non-Renewable</div>
+    <div class="goal-pill" id="goal-3"><div class="gp-dot"></div>Try All 3 Renewables</div>
+    <div class="goal-pill" id="goal-4"><div class="gp-dot"></div>Try All 3 Non-Renewables</div>
+    <div class="goal-pill" id="goal-5"><div class="gp-dot"></div>High Usage Sim</div>
+    <div class="goal-pill" id="goal-6"><div class="gp-dot"></div>Try All 6 Sims</div>
+    <span id="goals-count">0 / 6</span>
+  </div>
+
+  <!-- SIM NAVIGATION TABS (energy types + stats) -->
+  <div class="screen-tabs" id="sim-type-tabs">
+    <button class="screen-tab active" id="simtab-setup" onclick="switchToSimSetup()">⚙️ Simulator</button>
+    <button class="screen-tab" id="simtab-stats" onclick="switchToSimStats()">📊 My Stats</button>
+  </div>
+
+  <!-- SIMULATOR VIEW -->
+  <div id="sim-view">
+    <!-- SCREEN TABS (setup/sim/impact within a run) -->
+    <div class="screen-tabs">
+      <button class="screen-tab active" id="tab-s1" onclick="switchSimScreen(1)">⚙️ Setup</button>
+      <button class="screen-tab" id="tab-s2" onclick="switchSimScreen(2)">⚡ Simulation</button>
+      <button class="screen-tab" id="tab-s3" onclick="switchSimScreen(3)">📊 Impact Analysis</button>
+    </div>
+
+    <!-- SCREEN 1: SETUP -->
+    <div class="screen-block active" id="sim-screen-1">
+      <div class="sim-panel">
+        <div class="sim-header">
+          <span class="sim-title">⚙️ Energy Setup Panel</span>
+          <span class="sim-screen-badge">Screen 1 of 3</span>
+        </div>
+        <div class="sim-body">
+          <p class="tip-box" style="margin-bottom:16px">🌍 <em>Each energy source has unique environmental effects. Try all 6 to unlock the Stats View and complete your goals!</em></p>
+
+          <!-- Sim type selector (visual cards) -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:10px">⚡ CHOOSE ENERGY SOURCE</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="energy-type-cards">
+              <button class="energy-type-card" data-src="solar" onclick="selectEnergyCard(this,'solar')">
+                <span class="etc-icon">☀️</span><span class="etc-label">Solar</span>
+                <span class="etc-badge done-badge hidden" id="etbadge-solar">✓</span>
+              </button>
+              <button class="energy-type-card" data-src="wind" onclick="selectEnergyCard(this,'wind')">
+                <span class="etc-icon">💨</span><span class="etc-label">Wind</span>
+                <span class="etc-badge done-badge hidden" id="etbadge-wind">✓</span>
+              </button>
+              <button class="energy-type-card" data-src="hydro" onclick="selectEnergyCard(this,'hydro')">
+                <span class="etc-icon">💧</span><span class="etc-label">Hydro</span>
+                <span class="etc-badge done-badge hidden" id="etbadge-hydro">✓</span>
+              </button>
+              <button class="energy-type-card" data-src="coal" onclick="selectEnergyCard(this,'coal')">
+                <span class="etc-icon">🪨</span><span class="etc-label">Coal</span>
+                <span class="etc-badge done-badge hidden" id="etbadge-coal">✓</span>
+              </button>
+              <button class="energy-type-card" data-src="oil" onclick="selectEnergyCard(this,'oil')">
+                <span class="etc-icon">🛢️</span><span class="etc-label">Oil</span>
+                <span class="etc-badge done-badge hidden" id="etbadge-oil">✓</span>
+              </button>
+              <button class="energy-type-card" data-src="gas" onclick="selectEnergyCard(this,'gas')">
+                <span class="etc-icon">🔥</span><span class="etc-label">Nat. Gas</span>
+                <span class="etc-badge done-badge hidden" id="etbadge-gas">✓</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="sim-controls-row">
+            <div class="sim-ctrl">
+              <label>📊 Usage Level: <span class="range-val" id="usage-val">Medium</span></label>
+              <input type="range" id="usage-slider" min="1" max="3" value="2" step="1" oninput="updateSimPreview()"/>
+            </div>
+            <div class="sim-ctrl">
+              <label>🏠 Location</label>
+              <select id="location-select" onchange="updateSimPreview()">
+                <option value="home">Filipino Home 🏠</option>
+                <option value="community">Community 🏘️</option>
+                <option value="industry">Industry 🏭</option>
+              </select>
+            </div>
+          </div>
+          <!-- PREVIEW -->
+          <div id="setup-preview" style="background:var(--navy3);border-radius:10px;padding:14px 18px;margin-bottom:14px;font-size:.88rem;line-height:1.7">
+            <strong style="color:var(--accent2)">📋 Setup Preview:</strong><br>
+            Source: <span id="prev-source" style="color:var(--yellow);font-weight:700">Solar</span> |
+            Usage: <span id="prev-usage" style="color:var(--yellow);font-weight:700">Medium</span> |
+            Location: <span id="prev-loc" style="color:var(--yellow);font-weight:700">Home</span><br>
+            <span id="prev-tip" style="color:var(--muted)">Solar energy produces zero emissions — great choice!</span>
+          </div>
+          <div class="text-center">
+            <button class="l1-btn l1-btn-primary" onclick="runSimulation()">▶ Start Simulation →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: SIMULATION -->
+    <div class="screen-block" id="sim-screen-2">
+      <div class="sim-panel">
+        <div class="sim-header">
+          <span class="sim-title">⚡ Energy Simulation</span>
+          <span class="sim-screen-badge" id="sim-source-badge">Solar</span>
+        </div>
+        <div class="sim-body">
+          <canvas id="sim-canvas"></canvas>
+          <div id="eco-score-wrap">
+            <span style="font-size:.8rem;font-weight:700;color:var(--muted);white-space:nowrap">Eco Score</span>
+            <div id="eco-bar-track"><div id="eco-bar-fill" style="width:30%"></div></div>
+            <span id="eco-label">30%</span>
+            <span class="eco-grade" id="eco-grade">–</span>
+          </div>
+          <table class="impact-table">
+            <thead><tr><th>Metric</th><th>Before Use</th><th>After Use</th></tr></thead>
+            <tbody>
+              <tr><td>CO₂ Emitted</td><td>—</td><td id="sim-co2">—</td></tr>
+              <tr><td>Energy Generated</td><td>—</td><td id="sim-energy">—</td></tr>
+              <tr><td>Environmental Impact</td><td>—</td><td id="sim-impact">—</td></tr>
+            </tbody>
+          </table>
+          <div class="sim-msg" id="sim-msg-2"></div>
+          <div id="sim-q-wrap"></div>
+          <div class="gap-row mt-4" style="justify-content:center">
+            <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="switchSimScreen(1)">← Back to Setup</button>
+            <button class="l1-btn l1-btn-primary" onclick="switchSimScreen(3)" id="to-impact-btn">📊 See Impact Analysis →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: IMPACT ANALYSIS -->
+    <div class="screen-block" id="sim-screen-3">
+      <div class="sim-panel">
+        <div class="sim-header">
+          <span class="sim-title">📊 Environmental Impact Analysis</span>
+          <span class="sim-screen-badge">Screen 3 of 3</span>
+        </div>
+        <div class="sim-body">
+          <div class="pa-bar-wrap">
+            <div class="pa-bar-label"><span>CO₂ Emission Level</span><span id="impact-co2-val" style="color:var(--yellow)">0%</span></div>
+            <div class="pa-bar-track"><div class="pa-bar-fill" id="impact-co2-bar" style="width:0%"></div></div>
+          </div>
+          <div class="pa-bar-wrap">
+            <div class="pa-bar-label"><span>Environmental Damage Score</span><span id="impact-dmg-val" style="color:var(--yellow)">0%</span></div>
+            <div class="pa-bar-track"><div class="pa-bar-fill" id="impact-dmg-bar" style="width:0%;background:linear-gradient(90deg,var(--green),var(--red))"></div></div>
+          </div>
+          <div class="tip-box" id="impact-formula-box" style="font-family:var(--ff-head);font-size:.82rem;color:var(--yellow)">
+            Total Impact = Energy Used × Emission Factor<br>
+            <span id="impact-formula-filled" style="color:var(--muted);font-family:var(--ff-body);font-size:.85rem"></span>
+          </div>
+          <div class="sim-msg" id="sim-msg-3"></div>
+          <div class="gap-row mt-4" style="justify-content:center">
+            <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="switchSimScreen(1)">← Try Another Sim</button>
+            <button class="l1-btn l1-btn-primary" id="to-community-btn" disabled onclick="goPhase(4)">Next: Filipino Community Application 🏘️ →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- end sim-view -->
+
+  <!-- STATS VIEW -->
+  <div id="stats-view" style="display:none">
+    <div class="l1-card">
+      <div class="l1-card-title">📊 Your Simulation Stats</div>
+      <p style="font-size:.86rem;color:var(--muted);margin-bottom:14px">Results from each energy simulation you've run. Complete more sims to fill the table!</p>
+      <div id="stats-table-wrap"></div>
+    </div>
+    <div class="text-center mt-4">
+      <button class="l1-btn l1-btn-secondary" onclick="switchToSimSetup()">← Back to Simulator</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PHASE 4 – COMMUNITY APPLICATION ═══ -->
+<div id="phase-4" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 4 · Filipino Community Application</div>
+    <h2>🏘️ Power the Community</h2>
+    <p>Help a Filipino household reduce energy use and hit 100% Eco Score. Choose wisely — <strong>choices are permanent</strong> and some actions may hurt your score!</p>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">🌿 Current Eco Score</div>
+    <div id="eco-score-wrap2" style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+      <div style="flex:1;height:22px;background:var(--navy3);border-radius:99px;overflow:hidden">
+        <div id="eco-bar2" style="height:100%;width:30%;background:linear-gradient(90deg,var(--red),var(--orange),var(--yellow),var(--green));transition:.8s ease;border-radius:99px"></div>
+      </div>
+      <span style="font-family:var(--ff-head);font-size:1.1rem;color:var(--yellow)" id="eco-pct2">30%</span>
+    </div>
+    <p style="font-size:.88rem;color:var(--muted);margin-bottom:18px" id="community-status">Your Filipino home is currently using mostly non-renewable energy. Apply green solutions to improve your Eco Score!</p>
+
+    <p style="font-size:.82rem;color:var(--orange);font-weight:700;margin-bottom:14px">⚠️ Choices are irreversible. Each action's effect on Eco Score is hidden — think carefully before applying!</p>
+
+    <div class="community-grid">
+      <button class="community-btn" id="btn-solar" onclick="applyCommunityAction('solar')">☀️<br>Install Solar Panels<br><small style="font-size:.72rem;color:var(--muted)">Rooftop PV system</small></button>
+      <button class="community-btn" id="btn-led" onclick="applyCommunityAction('led')">💡<br>Switch to LED Bulbs<br><small style="font-size:.72rem;color:var(--muted)">Replace all lighting</small></button>
+      <button class="community-btn" id="btn-coal" onclick="applyCommunityAction('coal_gen')">🪨<br>Add Coal Generator<br><small style="font-size:.72rem;color:var(--muted)">Backup power source</small></button>
+      <button class="community-btn" id="btn-unplug" onclick="applyCommunityAction('unplug')">🔌<br>Unplug Idle Devices<br><small style="font-size:.72rem;color:var(--muted)">Reduce phantom loads</small></button>
+      <button class="community-btn" id="btn-wind" onclick="applyCommunityAction('wind')">💨<br>Community Wind Turbine<br><small style="font-size:.72rem;color:var(--muted)">Shared neighborhood unit</small></button>
+      <button class="community-btn" id="btn-diesel" onclick="applyCommunityAction('diesel_gen')">⛽<br>Diesel Generator<br><small style="font-size:.72rem;color:var(--muted)">Reliable backup power</small></button>
+      <button class="community-btn" id="btn-bike" onclick="applyCommunityAction('bike')">🚲<br>Bike / Walk to Work<br><small style="font-size:.72rem;color:var(--muted)">Cut fuel transportation</small></button>
+      <button class="community-btn" id="btn-rainwater" onclick="applyCommunityAction('rainwater')">🌧️<br>Rainwater Collection<br><small style="font-size:.72rem;color:var(--muted)">Reduce pump energy use</small></button>
+      <button class="community-btn" id="btn-ac" onclick="applyCommunityAction('extra_ac')">❄️<br>Add Extra AC Units<br><small style="font-size:.72rem;color:var(--muted)">Comfort in hot months</small></button>
+    </div>
+
+    <div class="sim-msg" id="community-msg"></div>
+    <div class="tip-box mt-2" id="community-tip" style="display:none">
+      🌟 <strong>Small changes in Filipino homes lead to big local and global benefits!</strong><br>
+      Reducing energy use helps fight climate change, lowers electricity bills, and supports a cleaner environment for future Filipinos.
+    </div>
+  </div>
+
+  <div class="l1-card" id="community-q-card" style="display:none">
+    <div class="l1-card-title">❓ Reflection Questions</div>
+    <div id="community-q-wrap"></div>
+  </div>
+
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" id="to-analysis-btn" disabled onclick="goPhase(5)">📊 See Analysis →</button>
+  </div>
+</div>
+
+<!-- ═══ PHASE 5 – ANALYSIS ═══ -->
+<div id="phase-5" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 5 · Performance Analysis</div>
+    <h2>📊 Your Energy Journey</h2>
+    <p>Here's a summary of what you explored and how well you understand energy sources.</p>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">🔬 Simulation Activity</div>
+    <div class="pa-bar-wrap">
+      <div class="pa-bar-label"><span>Simulations Run</span><span id="pa-sim-val" style="color:var(--yellow)">0</span></div>
+      <div class="pa-bar-track"><div class="pa-bar-fill" id="pa-sim-bar" style="width:0%"></div></div>
+    </div>
+    <div class="pa-bar-wrap">
+      <div class="pa-bar-label"><span>Goals Completed</span><span id="pa-goals-val" style="color:var(--yellow)">0 / 4</span></div>
+      <div class="pa-bar-track"><div class="pa-bar-fill" id="pa-goals-bar" style="width:0%"></div></div>
+    </div>
+    <div class="pa-bar-wrap">
+      <div class="pa-bar-label"><span>Final Eco Score</span><span id="pa-eco-val" style="color:var(--yellow)">0%</span></div>
+      <div class="pa-bar-track"><div class="pa-bar-fill" id="pa-eco-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">💡 Quick Recap</div>
+    <div class="tip-box">
+      ✅ <strong>Renewable energy</strong> is sustainable and eco-friendly — zero or very low emissions.<br><br>
+      ⚠️ <strong>Non-renewable energy</strong> harms the environment and will eventually be depleted.<br><br>
+      🌏 <strong>Reducing energy use</strong> benefits Filipino communities locally and globally — saving money and protecting the environment.
+    </div>
+    <p id="pa-tip" style="font-size:.9rem;line-height:1.7;color:var(--text)"></p>
+  </div>
+
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" onclick="goPhase(6)">📝 Start Final Quiz →</button>
+  </div>
+</div>
+
+<!-- ═══ PHASE 6 – FINAL QUIZ ═══ -->
+<div id="phase-6" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 6 · Final Quiz</div>
+    <h2>🧠 Energy Sources Quiz</h2>
+    <p>10 questions based on everything you've learned. Good luck! 🍃</p>
+  </div>
+  <div class="l1-card">
+    <div class="quiz-counter">
+      <span id="quiz-counter">Question 1 of 10</span>
+      <span id="quiz-score-live" style="color:var(--accent2)">Score: 0</span>
+    </div>
+    <div class="quiz-prog-track"><div class="quiz-prog-fill" id="quiz-prog-fill" style="width:0%"></div></div>
+    <div class="quiz-q" id="quiz-q-text">Loading...</div>
+    <div class="quiz-opts" id="quiz-opts"></div>
+    <div class="quiz-feedback" id="quiz-feedback"></div>
+    <div class="text-center mt-4">
+      <button class="l1-btn l1-btn-primary hidden" id="quiz-next-btn" onclick="nextQuestion()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PHASE 7 – RESULTS ═══ -->
+<div id="phase-7" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 7 · Results</div>
+    <h2>🏆 Lesson Complete!</h2>
+    <p>You've finished Lesson 4: Energy Sources. Here's how you did!</p>
+  </div>
+  <div class="l1-card text-center">
+    <div style="font-size:3rem;margin-bottom:10px">🌿</div>
+    <div style="font-family:var(--ff-head);font-size:2.5rem;color:var(--yellow);margin-bottom:6px" id="final-score">0</div>
+    <div style="color:var(--muted);font-size:.9rem;margin-bottom:20px">out of 10 correct</div>
+    <div class="badge-grid" id="badge-grid"></div>
+    <div class="tip-box mt-4" id="final-tip" style="text-align:left"></div>
+  </div>
+  <div class="text-center mt-4">
+    <a href="index.html" class="l1-btn l1-btn-green">🏠 Back to Main Menu</a>
+  </div>
+</div>
+
+</div><!-- end lesson-content -->
+</div><!-- end page-body -->
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════
+   ALECS – LESSON 4: ENERGY SOURCES
+   Tralalelo Tralala Energy Simulator
+═══════════════════════════════════════════════════ */
+
+const XP_PER_LEVEL = 1000;
+
+/* ── LOCALSTORAGE ── */
+function getDefaultUser() {
+  return {
+    name:'N/A', xp:0, level:1, streak:0, lastLoginDate:null,
+    dailyGoals:{readLesson:false,playedGame:false,quizPassed:false},
+    lessons:{1:{pct:0,unlocked:true},2:{pct:0,unlocked:true},3:{pct:0,unlocked:true},4:{pct:0,unlocked:true}},
+    lesson4:{phase:1,simCount:0,goalsCompleted:0,ecoScore:30,communityDone:false,quizScore:0,complete:false}
+  };
+}
+function loadUser() {
+  try {
+    const raw = localStorage.getItem('alecs_user');
+    if (!raw) return getDefaultUser();
+    const u = JSON.parse(raw);
+    if (!u.lesson4) u.lesson4 = getDefaultUser().lesson4;
+    if (!u.lessons) u.lessons = getDefaultUser().lessons;
+    if (!u.lessons[4]) u.lessons[4] = {pct:0,unlocked:true};
+    return u;
+  } catch { return getDefaultUser(); }
+}
+function saveUser(u) { localStorage.setItem('alecs_user', JSON.stringify(u)); }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function updateStreak(u) {
+  const today = todayStr();
+  if (!u.lastLoginDate) { u.streak=1; u.lastLoginDate=today; return; }
+  if (u.lastLoginDate===today) return;
+  const diff = Math.round((new Date(today)-new Date(u.lastLoginDate))/86400000);
+  u.streak = diff===1 ? u.streak+1 : 1;
+  u.lastLoginDate = today;
+}
+
+/* ── XP ── */
+function awardXP(amount, label) {
+  const u = loadUser();
+  u.xp += amount;
+  while (u.xp >= XP_PER_LEVEL) { u.xp -= XP_PER_LEVEL; u.level++; }
+  saveUser(u);
+  renderXP(u);
+  showXPToast('+' + amount + ' XP' + (label ? ' · ' + label : ''));
+  syncLesson4Progress();
+}
+function renderXP(u) {
+  const totalXP = u.xp + (u.level-1)*XP_PER_LEVEL;
+  document.getElementById('xp-display').textContent = totalXP;
+  document.getElementById('level-lbl').textContent = '⚡ Level ' + u.level;
+  document.getElementById('xp-lbl').textContent = u.xp + ' / ' + XP_PER_LEVEL + ' XP';
+  document.getElementById('xp-fill').style.width = (u.xp/XP_PER_LEVEL*100) + '%';
+  document.getElementById('streak-display').textContent = '🔥 ' + u.streak + '-day streak' + (u.streak>=3?'!':'');
+}
+function showXPToast(msg) {
+  const t = document.getElementById('xp-toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ── FUN FACT ── */
+const FUN_FACTS = [
+  'The Philippines is one of the top geothermal energy producers in the world!',
+  'Solar energy now costs less per kWh than coal in many regions — including parts of the Philippines.',
+  'The Bangui Windmills in Ilocos Norte were the first wind farm in Southeast Asia.',
+  'Switching 10 million Filipino homes to LED bulbs would save enough energy to power a small city.',
+  'Hydropower currently generates about 18% of Philippine electricity needs.',
+];
+let ffTimer = null;
+function showFunFact(text) {
+  const bar = document.getElementById('funfact-bar');
+  clearTimeout(ffTimer);
+  bar.textContent = '🍃 ' + (text || FUN_FACTS[Math.floor(Math.random()*FUN_FACTS.length)]);
+  bar.classList.add('show');
+  ffTimer = setTimeout(() => bar.classList.remove('show'), 6000);
+}
+
+/* ── PHASE NAVIGATION ── */
+let currentPhase = 1;
+let _l4Resuming = false;
+const PHASE_STEPS  = {1:'step-1',2:'step-2',3:'step-3',4:'step-4',5:'step-5',6:'step-6',7:'step-7'};
+const PHASE_BLOCKS = {1:'phase-1',2:'phase-2',3:'phase-3',4:'phase-4',5:'phase-5',6:'phase-6',7:'phase-7'};
+
+function goPhase(n) {
+  document.getElementById(PHASE_STEPS[currentPhase]).className = 'step-item done';
+  document.getElementById(PHASE_BLOCKS[currentPhase]).className = 'phase-block';
+  currentPhase = n;
+  document.getElementById(PHASE_STEPS[n]).className = 'step-item active';
+  document.getElementById(PHASE_BLOCKS[n]).className = 'phase-block active';
+  for (let i=1;i<n;i++) { const s=document.getElementById(PHASE_STEPS[i]); if(s) s.className='step-item done'; }
+  window.scrollTo({top:0, behavior:'smooth'});
+  syncSidebar();
+  if (!_l4Resuming) {
+    const phaseXP = {2:10,3:15,4:10,5:10,6:20,7:0};
+    if (phaseXP[n]) awardXP(phaseXP[n], 'Phase '+n+' unlocked');
+  }
+  if (n===5) showAnalysis();
+  if (n===6) initQuiz();
+  if (n===7) showResults();
+  const u = loadUser();
+  u.lesson4.phase = Math.max(u.lesson4.phase||1, n);
+  saveUser(u);
+  syncLesson4Progress();
+}
+
+function resumeToSavedPhase() {
+  const u = loadUser();
+  const saved = u.lesson4 && u.lesson4.phase ? u.lesson4.phase : 1;
+  ecoScore = u.lesson4.ecoScore || 30;
+  simCount = u.lesson4.simCount || 0;
+  if (saved > 1) {
+    _l4Resuming = true;
+    goPhase(saved);
+    _l4Resuming = false;
+    const kcBtn = document.getElementById('kc-next-btn');
+    if (kcBtn && saved > 1) kcBtn.disabled = false;
+    const toComBtn = document.getElementById('to-community-btn');
+    if (toComBtn && saved > 3) toComBtn.disabled = false;
+    const toAnaBtn = document.getElementById('to-analysis-btn');
+    if (toAnaBtn && saved > 4) toAnaBtn.disabled = false;
+  }
+  updateEcoDisplay();
+}
+
+function syncSidebar() {
+  for (let i=1;i<=7;i++) {
+    const el = document.getElementById('sb-step-'+i);
+    if (!el) continue;
+    el.className = 'sb-phase-item' + (i===currentPhase?' active':i<currentPhase?' done':'');
+  }
+  const u = loadUser();
+  document.getElementById('sb-streak').textContent = '🔥 '+u.streak+'-day streak';
+  document.getElementById('sb-phase-prog').textContent = 'Phase '+currentPhase+' of 7';
+  document.getElementById('sb-eco-score').textContent = ecoScore + '%';
+  const totalXP = u.xp + (u.level-1)*XP_PER_LEVEL;
+}
+
+/* ── PHASE 1: KNOWLEDGE CHECK ── */
+const KC_QUESTIONS = [
+  { q:'What is a renewable energy source?', opts:['Coal','Solar','Oil','Natural Gas'], ans:1 },
+  { q:'Which of the following produces zero CO₂ emissions?', opts:['Coal Power Plant','Oil Refinery','Wind Turbine','Gas Burner'], ans:2 },
+  { q:'Which energy source is most commonly used in the Philippines today?', opts:['Solar','Wind','Coal','Hydro'], ans:2 },
+  { q:'What happens to non-renewable energy sources over time?', opts:['They increase','They run out','They stay the same','They become renewable'], ans:1 },
+  { q:'Which of these is a benefit of switching to renewable energy?', opts:['Higher CO₂ emissions','More air pollution','Reduced environmental damage','Greater energy costs always'], ans:2 },
+];
+let kcAnswered = 0;
+function buildKnowledgeCheck() {
+  const wrap = document.getElementById('kc-questions-wrap');
+  if (!wrap) return;
+  KC_QUESTIONS.forEach((q, qi) => {
+    const block = document.createElement('div');
+    block.className = 'kc-question';
+    block.id = 'kcq-'+qi;
+    const qtext = document.createElement('div');
+    qtext.className = 'kc-q-text';
+    qtext.textContent = (qi+1)+'. '+q.q;
+    block.appendChild(qtext);
+    const optsWrap = document.createElement('div');
+    optsWrap.className = 'kc-options';
+    optsWrap.id = 'kc-opts-'+qi;
+    q.opts.forEach((opt, oi) => {
+      const btn = document.createElement('button');
+      btn.className = 'kc-opt';
+      btn.textContent = String.fromCharCode(65+oi)+'. '+opt;
+      btn.onclick = () => answerKC(qi, oi, q.ans);
+      optsWrap.appendChild(btn);
+    });
+    block.appendChild(optsWrap);
+    const fb = document.createElement('div');
+    fb.className = 'kc-feedback';
+    fb.id = 'kc-fb-'+qi;
+    block.appendChild(fb);
+    wrap.appendChild(block);
+  });
+}
+
+function answerKC(qi, chosen, correct) {
+  const opts = document.querySelectorAll('#kc-opts-'+qi+' .kc-opt');
+  opts.forEach(o => o.disabled=true);
+  opts[chosen].classList.add(chosen===correct?'correct':'wrong');
+  if (chosen!==correct) opts[correct].classList.add('correct');
+  const fb = document.getElementById('kc-fb-'+qi);
+  fb.classList.add('show', chosen===correct?'correct':'wrong');
+  fb.textContent = chosen===correct ? '✅ Correct!' : '❌ Not quite — the highlighted answer is correct.';
+  kcAnswered++;
+  if (kcAnswered===KC_QUESTIONS.length) {
+    awardXP(15, 'Knowledge check complete!');
+    document.getElementById('kc-next-btn').disabled = false;
+  }
+}
+
+/* ── PHASE 3: ENERGY SIMULATOR ── */
+const ENERGY_DATA = {
+  solar: { label:'☀️ Solar', renewable:true, emissionFactor:0, co2:'~0 g/kWh', energy:'5 kWh/day', impactClass:'impact-low', impactText:'Very Low', ecoBonus:90, tip:'Solar energy produces zero emissions during operation — excellent for homes and communities!' },
+  wind:  { label:'💨 Wind',  renewable:true, emissionFactor:0.01, co2:'~11 g/kWh', energy:'4–8 kWh/day', impactClass:'impact-low', impactText:'Very Low', ecoBonus:85, tip:'Wind is clean and sustainable. Bangui Windmills in Ilocos Norte prove it works in the Philippines!' },
+  hydro: { label:'💧 Hydro', renewable:true, emissionFactor:0.02, co2:'~24 g/kWh', energy:'Variable', impactClass:'impact-low', impactText:'Low', ecoBonus:80, tip:'Hydropower is clean and reliable, but depends on rainfall — important during dry season.' },
+  coal:  { label:'🪨 Coal',  renewable:false, emissionFactor:1.0, co2:'~820 g/kWh', energy:'1000+ kWh/day', impactClass:'impact-high', impactText:'Very High', ecoBonus:15, tip:'Coal is the biggest source of electricity in PH but emits the most CO₂. A major driver of climate change.' },
+  oil:   { label:'🛢️ Oil',  renewable:false, emissionFactor:0.85, co2:'~650 g/kWh', energy:'500+ kWh/day', impactClass:'impact-high', impactText:'High', ecoBonus:20, tip:'Oil burning emits high CO₂ and other pollutants. Also subject to global price fluctuations.' },
+  gas:   { label:'🔥 Gas',  renewable:false, emissionFactor:0.5, co2:'~490 g/kWh', energy:'500+ kWh/day', impactClass:'impact-med', impactText:'Medium', ecoBonus:40, tip:'Natural gas emits less CO₂ than coal but is still non-renewable and produces greenhouse gases.' },
+};
+const USAGE_LABELS = {1:'Low', 2:'Medium', 3:'High'};
+const LOCATION_LABELS = {home:'Filipino Home 🏠', community:'Community 🏘️', industry:'Industry 🏭'};
+
+// Per-simulation unique embedded questions
+const SIM_QUESTIONS_BY_SOURCE = {
+  solar: [
+    { q:'Why does solar energy have near-zero CO₂ emissions?', opts:['It burns clean fuel','It converts sunlight directly — no combustion','It uses water power','It runs on wind'], ans:1, feedback:'Solar PV cells convert sunlight to electricity without any burning or chemical combustion. ✅' }
+  ],
+  wind: [
+    { q:'Why is wind energy considered intermittent?', opts:['It only works at night','Wind speed varies and is not always available','It produces too much power','It requires burning fuel'], ans:1, feedback:'Wind is not always blowing — output varies with weather, making storage important. ✅' }
+  ],
+  hydro: [
+    { q:'What is the main environmental risk of large hydropower dams?', opts:['Air pollution','Disrupting river ecosystems and fish migration','Too much electricity','Using up sunlight'], ans:1, feedback:'Dams can block fish migration routes and alter downstream ecosystems. ✅' }
+  ],
+  coal: [
+    { q:'Which gas emitted by coal power plants is the biggest driver of climate change?', opts:['Oxygen','Nitrogen','CO₂ (carbon dioxide)','Water vapor'], ans:2, feedback:'Coal combustion releases massive amounts of CO₂, the primary greenhouse gas causing global warming. ✅' }
+  ],
+  oil: [
+    { q:'Besides CO₂, what other pollutant does oil burning release that harms air quality?', opts:['Pure water vapor','Nitrogen fertilizer','Sulfur dioxide (SO₂) and particulates','Clean oxygen'], ans:2, feedback:'Oil combustion produces sulfur dioxide and fine particles that cause smog and respiratory illness. ✅' }
+  ],
+  gas: [
+    { q:'Natural gas burns "cleaner" than coal, but it still contributes to climate change because:', opts:['It uses too much water','Methane leaks during extraction are a potent greenhouse gas','It generates too much electricity','It is completely carbon-free'], ans:1, feedback:'Methane (CH₄) leaks from gas pipelines are 80× more potent than CO₂ over 20 years. ✅' }
+  ],
+};
+
+let simGoalsDone = new Set();
+let simsDoneSet = new Set(); // which of the 6 sources have been run
+let simCount = 0;
+let ecoScore = 30;
+let lastRunData = null;
+let simEmbeddedAnswered = false;
+let currentSelectedSrc = 'solar';
+let simStatsLog = {}; // src -> {ecoDisplay, impactText, co2, usage, loc}
+
+// Goals: 1=tried renewable, 2=tried non-renewable, 3=tried all 3 renewables, 4=tried all 3 non-renewables, 5=high usage, 6=all 6
+let currentSimQ = 0;
+
+function selectEnergyCard(el, src) {
+  document.querySelectorAll('.energy-type-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  currentSelectedSrc = src;
+  updateSimPreview();
+}
+
+function updateSimPreview() {
+  const src = currentSelectedSrc || 'solar';
+  const usage = parseInt(document.getElementById('usage-slider').value);
+  const loc = document.getElementById('location-select').value;
+  const data = ENERGY_DATA[src];
+  document.getElementById('usage-val').textContent = USAGE_LABELS[usage];
+  document.getElementById('prev-source').textContent = data.label;
+  document.getElementById('prev-usage').textContent = USAGE_LABELS[usage];
+  document.getElementById('prev-loc').textContent = LOCATION_LABELS[loc];
+  document.getElementById('prev-tip').textContent = data.tip;
+}
+
+function runSimulation() {
+  const src = currentSelectedSrc || 'solar';
+  const usage = parseInt(document.getElementById('usage-slider').value);
+  const loc = document.getElementById('location-select').value;
+  const data = ENERGY_DATA[src];
+  lastRunData = {src, usage, loc, data};
+  simCount++;
+  simsDoneSet.add(src);
+  const u = loadUser();
+  u.lesson4.simCount = simCount;
+  saveUser(u);
+
+  // Mark done badge on card
+  const badge = document.getElementById('etbadge-'+src);
+  if (badge) badge.classList.remove('hidden');
+  const card = document.querySelector('.energy-type-card[data-src="'+src+'"]');
+  if (card) card.classList.add('completed');
+
+  // Goals
+  const renewables = ['solar','wind','hydro'];
+  const nonrenewables = ['coal','oil','gas'];
+  if (data.renewable && !simGoalsDone.has('renewable')) { simGoalsDone.add('renewable'); markSimGoal(1); }
+  if (!data.renewable && !simGoalsDone.has('nonrenewable')) { simGoalsDone.add('nonrenewable'); markSimGoal(2); }
+  if (renewables.every(r=>simsDoneSet.has(r)) && !simGoalsDone.has('all_renewables')) { simGoalsDone.add('all_renewables'); markSimGoal(3); }
+  if (nonrenewables.every(r=>simsDoneSet.has(r)) && !simGoalsDone.has('all_nonrenewables')) { simGoalsDone.add('all_nonrenewables'); markSimGoal(4); }
+  if (usage===3 && !simGoalsDone.has('high')) { simGoalsDone.add('high'); markSimGoal(5); }
+  if (simsDoneSet.size===6 && !simGoalsDone.has('all6')) { simGoalsDone.add('all6'); markSimGoal(6); }
+
+  const usageMultiplier = usage===1?0.5:usage===2?1:1.8;
+  const locMultiplier = loc==='home'?1:loc==='community'?2:4;
+  const damageScore = Math.round(data.emissionFactor * usageMultiplier * locMultiplier * 100);
+  const co2Pct = Math.round(data.emissionFactor * 100);
+
+  document.getElementById('sim-source-badge').textContent = data.label;
+  document.getElementById('sim-co2').innerHTML = `<span class="${data.impactClass}">${data.co2}</span>`;
+  document.getElementById('sim-energy').textContent = data.energy;
+  document.getElementById('sim-impact').innerHTML = `<span class="${data.impactClass}">${data.impactText}</span>`;
+
+  const eco = Math.round(data.ecoBonus - damageScore * 0.2);
+  const ecoDisplay = Math.max(5, Math.min(100, eco));
+  document.getElementById('eco-bar-fill').style.width = ecoDisplay + '%';
+  document.getElementById('eco-label').textContent = ecoDisplay + '%';
+  document.getElementById('eco-grade').textContent = ecoDisplay >= 75 ? '🌿 Great!' : ecoDisplay >= 45 ? '⚠️ Moderate' : '❌ High Impact';
+
+  // Store stats for this sim
+  simStatsLog[src] = { ecoDisplay, impactText: data.impactText, co2: data.co2, usage: USAGE_LABELS[usage], loc: LOCATION_LABELS[loc], renewable: data.renewable };
+
+  const u2 = loadUser();
+  u2.lesson4._lastCo2Pct = co2Pct;
+  u2.lesson4._lastDmgPct = damageScore;
+  u2.lesson4._lastSrc = src;
+  u2.lesson4._lastUsage = usage;
+  u2.lesson4._lastLoc = loc;
+  u2.lesson4._lastEmFactor = data.emissionFactor;
+  saveUser(u2);
+
+  const msg = document.getElementById('sim-msg-2');
+  msg.className = 'sim-msg show ' + (data.renewable ? 'correct' : 'wrong');
+  msg.textContent = data.renewable
+    ? `✅ Clean Energy Used! ${data.label} produces ${data.co2} CO₂. Low environmental impact. 🌿`
+    : `⚠️ ${data.label} emits ${data.co2} CO₂/kWh — significant environmental impact.`;
+
+  // Load per-source embedded question
+  currentSimQ = 0;
+  simEmbeddedAnswered = false;
+  buildSimQuestion(src);
+
+  // FIX: Pass src to canvas animator so each sim shows the right animation
+  animateSimCanvas(src, usage);
+
+  switchSimScreen(2);
+  awardXP(10, 'Simulation run!');
+  showFunFact();
+}
+
+function buildSimQuestion(src) {
+  const wrap = document.getElementById('sim-q-wrap');
+  if (!wrap) return;
+  const questions = SIM_QUESTIONS_BY_SOURCE[src] || SIM_QUESTIONS_BY_SOURCE['solar'];
+  if (currentSimQ >= questions.length) { wrap.innerHTML = ''; return; }
+  const q = questions[currentSimQ];
+  wrap.innerHTML = `
+    <div class="kc-question" style="margin-top:14px">
+      <div class="kc-q-text">❓ ${q.q}</div>
+      <div class="kc-options" id="simq-opts">
+        ${q.opts.map((o,i)=>`<button class="kc-opt" onclick="answerSimQ(${i},${q.ans},'${q.feedback.replace(/'/g,"\\'")}','${src}')">${String.fromCharCode(65+i)}. ${o}</button>`).join('')}
+      </div>
+      <div class="kc-feedback" id="simq-fb"></div>
+    </div>`;
+}
+
+function answerSimQ(chosen, correct, feedback, src) {
+  const opts = document.querySelectorAll('#simq-opts .kc-opt');
+  opts.forEach(o=>o.disabled=true);
+  opts[chosen].classList.add(chosen===correct?'correct':'wrong');
+  if (chosen!==correct) opts[correct].classList.add('correct');
+  const fb = document.getElementById('simq-fb');
+  fb.classList.add('show', chosen===correct?'correct':'wrong');
+  fb.textContent = chosen===correct ? '✅ '+feedback : '❌ Not quite. '+feedback;
+  if (chosen===correct) awardXP(5, 'Correct!');
+  currentSimQ++;
+  setTimeout(() => { buildSimQuestion(src||currentSelectedSrc); }, 400);
+}
+
+function markSimGoal(n) {
+  const pill = document.getElementById('goal-'+n);
+  if (pill) pill.classList.add('done');
+  const u = loadUser();
+  u.lesson4.goalsCompleted = simGoalsDone.size;
+  saveUser(u);
+  updateGoalsCount();
+}
+
+function updateGoalsCount() {
+  const el = document.getElementById('goals-count');
+  if (el) el.textContent = simGoalsDone.size + ' / 6';
+}
+
+/* ── SIM VIEW SWITCHING ── */
+function switchToSimSetup() {
+  document.getElementById('sim-view').style.display = '';
+  document.getElementById('stats-view').style.display = 'none';
+  document.getElementById('simtab-setup').classList.add('active');
+  document.getElementById('simtab-stats').classList.remove('active');
+}
+
+function switchToSimStats() {
+  document.getElementById('sim-view').style.display = 'none';
+  document.getElementById('stats-view').style.display = '';
+  document.getElementById('simtab-setup').classList.remove('active');
+  document.getElementById('simtab-stats').classList.add('active');
+  renderStatsTable();
+}
+
+function renderStatsTable() {
+  const wrap = document.getElementById('stats-table-wrap');
+  if (!wrap) return;
+  const ALL_SOURCES = ['solar','wind','hydro','coal','oil','gas'];
+  const LABELS = {solar:'☀️ Solar',wind:'💨 Wind',hydro:'💧 Hydro',coal:'🪨 Coal',oil:'🛢️ Oil',gas:'🔥 Nat. Gas'};
+  let html = `<table class="impact-table"><thead><tr><th>Source</th><th>Usage</th><th>Location</th><th>CO₂</th><th>Eco Score</th><th>Impact</th></tr></thead><tbody>`;
+  ALL_SOURCES.forEach(src => {
+    const d = simStatsLog[src];
+    if (d) {
+      const ecoColor = d.ecoDisplay >= 75 ? 'var(--green)' : d.ecoDisplay >= 45 ? 'var(--yellow)' : 'var(--red)';
+      html += `<tr><td><strong>${LABELS[src]}</strong></td><td>${d.usage}</td><td style="font-size:.78rem">${d.loc}</td><td>${d.co2}</td><td style="color:${ecoColor};font-weight:800">${d.ecoDisplay}%</td><td class="${d.renewable?'impact-low':'impact-high'}">${d.impactText}</td></tr>`;
+    } else {
+      html += `<tr><td><strong>${LABELS[src]}</strong></td><td colspan="5" style="color:var(--muted);font-style:italic">Not yet simulated</td></tr>`;
+    }
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+/* ── CANVAS ANIMATION (FIXED: uses src not just isRenewable) ── */
+function animateSimCanvas(src, usage) {
+  const canvas = document.getElementById('sim-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 600;
+  canvas.height = 160;
+  let frame = 0;
+  let animId = null;
+
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const cw = canvas.width, ch = canvas.height;
+
+    if (src === 'solar') {
+      ctx.fillStyle = '#0d1b2a'; ctx.fillRect(0,0,cw,ch);
+      ctx.fillStyle = '#1e3450'; ctx.fillRect(0,ch-30,cw,30);
+      const sunX = cw*0.12, sunY = ch*0.25;
+      const pulse = Math.sin(frame*0.05)*3;
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath(); ctx.arc(sunX,sunY,18+pulse,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(255,215,0,0.4)'; ctx.lineWidth=2;
+      for (let a=0;a<8;a++) {
+        const angle=(a/8)*Math.PI*2+frame*0.02;
+        ctx.beginPath(); ctx.moveTo(sunX+Math.cos(angle)*22,sunY+Math.sin(angle)*22);
+        ctx.lineTo(sunX+Math.cos(angle)*(32+pulse),sunY+Math.sin(angle)*(32+pulse)); ctx.stroke();
+      }
+      const t=(frame%60)/60;
+      const beamX=sunX+t*(cw*0.7-sunX), beamY=sunY+(ch*0.7-sunY)*t;
+      ctx.fillStyle='rgba(255,215,0,'+(.8-t*.5)+')';
+      ctx.beginPath(); ctx.arc(beamX,beamY,4,0,Math.PI*2); ctx.fill();
+      drawHouse(ctx,cw*0.7,ch*0.7,'#22c55e',true);
+
+    } else if (src === 'wind') {
+      ctx.fillStyle = '#0a1628'; ctx.fillRect(0,0,cw,ch);
+      ctx.fillStyle = '#1e3450'; ctx.fillRect(0,ch-30,cw,30);
+      // Wind turbines
+      const numTurbines = usage===3?3:usage===2?2:1;
+      for (let t=0;t<numTurbines;t++) {
+        const tx = cw*(0.2+t*0.28), ty = ch*0.55;
+        ctx.strokeStyle='#94a3b8'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(tx,ty-ch*0.35); ctx.stroke();
+        // Spinning blades
+        for (let b=0;b<3;b++) {
+          const angle = (b/3)*Math.PI*2 + frame*0.06;
+          ctx.strokeStyle='rgba(148,210,220,0.8)'; ctx.lineWidth=3;
+          ctx.beginPath(); ctx.moveTo(tx,ty-ch*0.35);
+          ctx.lineTo(tx+Math.cos(angle)*35,ty-ch*0.35+Math.sin(angle)*35); ctx.stroke();
+        }
+      }
+      // Moving clouds
+      const cloudX = (cw - (frame*1.2)%cw);
+      ctx.fillStyle='rgba(148,163,184,0.2)';
+      ctx.beginPath(); ctx.arc(cloudX,ch*0.15,18,0,Math.PI*2);
+      ctx.arc(cloudX+20,ch*0.12,22,0,Math.PI*2);
+      ctx.arc(cloudX+40,ch*0.15,16,0,Math.PI*2); ctx.fill();
+
+    } else if (src === 'hydro') {
+      ctx.fillStyle = '#0a1a2e'; ctx.fillRect(0,0,cw,ch);
+      // River/dam
+      ctx.fillStyle = '#1e5fa8';
+      ctx.fillRect(0,ch*0.55,cw,ch*0.2);
+      // Waves
+      ctx.strokeStyle='rgba(100,180,255,0.4)'; ctx.lineWidth=2;
+      for (let w=0;w<3;w++) {
+        ctx.beginPath();
+        for (let x=0;x<cw;x+=4) {
+          const y = ch*0.6+Math.sin((x*0.05)+(frame*0.1)+(w*2))*5;
+          w===0&&x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+      }
+      // Dam wall
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(cw*0.35,ch*0.3,30,ch*0.3);
+      // Turbine spin inside dam
+      const tx=cw*0.35+15, ty=ch*0.6;
+      for (let b=0;b<4;b++) {
+        const ang=(b/4)*Math.PI*2+frame*0.1;
+        ctx.strokeStyle='rgba(34,197,94,0.7)'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(tx+Math.cos(ang)*12,ty+Math.sin(ang)*12); ctx.stroke();
+      }
+      // Water flow arrows
+      for (let a=0;a<4;a++) {
+        const ax=(cw*0.1+a*(cw*0.2)+frame*2)%(cw*0.9);
+        ctx.fillStyle='rgba(100,200,255,0.5)';
+        ctx.beginPath(); ctx.moveTo(ax,ch*0.67); ctx.lineTo(ax+10,ch*0.63); ctx.lineTo(ax+10,ch*0.71); ctx.closePath(); ctx.fill();
+      }
+
+    } else {
+      // Non-renewable: coal/oil/gas all show factory smoke stacks with color variation
+      const bgColor = src==='coal'?'#1a1008':src==='oil'?'#1a1010':'#0d1520';
+      ctx.fillStyle = bgColor; ctx.fillRect(0,0,cw,ch);
+      ctx.fillStyle = '#1e3450'; ctx.fillRect(0,ch-30,cw,30);
+      const smokeColor = src==='coal'?'#888':src==='oil'?'#996633':'#aabbc0';
+      const numStacks = usage===3?3:usage===2?2:1;
+      for (let s=0;s<numStacks;s++) {
+        const sx=cw*(0.18+s*0.25);
+        ctx.fillStyle='#334155';
+        ctx.fillRect(sx-12,ch*0.35,24,ch*0.35);
+        // Smoke puffs
+        for (let p=0;p<5;p++) {
+          const py=(ch*0.35)-((frame*1.8+p*22+s*9)%80);
+          const pr=10+(p*3);
+          const drift=Math.sin(frame*0.03+p+s)*10;
+          ctx.fillStyle=`rgba(${smokeColor==='#888'?'100,100,100':smokeColor==='#996633'?'140,90,40':'130,160,170'},${0.55-p*.1})`;
+          ctx.beginPath(); ctx.arc(sx+drift,py,pr,0,Math.PI*2); ctx.fill();
+        }
+      }
+      // Danger glow overlay
+      const glowColor = src==='coal'?'rgba(239,68,68,0.06)':src==='oil'?'rgba(245,158,11,0.06)':'rgba(99,102,241,0.04)';
+      ctx.fillStyle=glowColor; ctx.fillRect(0,0,cw,ch);
+    }
+
+    frame++;
+    animId = requestAnimationFrame(draw);
+    if (frame > 150) { cancelAnimationFrame(animId); }
+  }
+  if (animId) cancelAnimationFrame(animId);
+  draw();
+}
+
+function drawHouse(ctx, x, y, color, lights) {
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.moveTo(x-30,y); ctx.lineTo(x,y-30); ctx.lineTo(x+30,y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#1e3450';
+  ctx.fillRect(x-22,y,44,30);
+  ctx.fillStyle = '#334155'; ctx.fillRect(x-7,y+14,14,16);
+  ctx.fillStyle = lights ? '#ffd700' : '#334155';
+  ctx.fillRect(x-18,y+6,10,8); ctx.fillRect(x+8,y+6,10,8);
+  if (lights) {
+    ctx.fillStyle='rgba(255,215,0,0.15)';
+    ctx.beginPath(); ctx.arc(x,y+15,40,0,Math.PI*2); ctx.fill();
+  }
+}
+
+/* ── SIM SCREEN TABS ── */
+function switchSimScreen(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('sim-screen-'+i).className = 'screen-block' + (i===n?' active':'');
+    document.getElementById('tab-s'+i).className = 'screen-tab' + (i===n?' active':'');
+  });
+  if (n===3) showImpactAnalysis();
+}
+
+function showImpactAnalysis() {
+  const u = loadUser();
+  const l4 = u.lesson4;
+  const co2Pct = l4._lastCo2Pct || 0;
+  const dmgPct = l4._lastDmgPct || 0;
+  const src = l4._lastSrc || 'solar';
+  const usage = l4._lastUsage || 2;
+  const emFactor = l4._lastEmFactor || 0;
+  const usageMultiplier = usage===1?0.5:usage===2?1:1.8;
+
+  setTimeout(() => {
+    document.getElementById('impact-co2-bar').style.width = co2Pct + '%';
+    document.getElementById('impact-co2-val').textContent = co2Pct + '%';
+    document.getElementById('impact-dmg-bar').style.width = Math.min(dmgPct, 100) + '%';
+    document.getElementById('impact-dmg-val').textContent = Math.min(dmgPct, 100) + '%';
+  }, 200);
+
+  document.getElementById('impact-formula-filled').textContent =
+    `= ${usageMultiplier.toFixed(1)} kWh × ${emFactor} factor = ${(emFactor*usageMultiplier).toFixed(2)} impact units`;
+
+  const msg3 = document.getElementById('sim-msg-3');
+  msg3.className = 'sim-msg show ' + (co2Pct < 10 ? 'correct' : co2Pct < 50 ? 'info' : 'wrong');
+  msg3.textContent = co2Pct < 10
+    ? '🌿 Excellent! Minimal environmental impact — this energy source is eco-friendly.'
+    : co2Pct < 50
+      ? '⚠️ Moderate impact. Consider switching to renewable sources for this location.'
+      : '❌ High environmental impact! This energy source significantly harms the environment.';
+
+  document.getElementById('to-community-btn').disabled = false;
+  awardXP(10, 'Impact analysis reviewed!');
+  showFunFact();
+}
+
+/* ── PHASE 4: COMMUNITY (hidden scores, irreversible, non-obvious traps) ── */
+const COMMUNITY_ACTIONS = {
+  solar:      { score: +25, positive: true,  msg: '☀️ Solar panels installed! Your home now generates clean electricity from sunlight.' },
+  led:        { score: +20, positive: true,  msg: '💡 LED bulbs use far less electricity. Phantom power drain drops significantly.' },
+  coal_gen:   { score: -20, positive: false, msg: '🪨 The coal generator is running... thick smoke rises over the neighborhood.' },
+  unplug:     { score: +15, positive: true,  msg: '🔌 Smart habit! Idle appliances were drawing power even when switched off.' },
+  wind:       { score: +20, positive: true,  msg: '💨 Wind turbine installed! Clean electricity flows to the whole community.' },
+  diesel_gen: { score: -15, positive: false, msg: '⛽ The diesel generator powers your home — but fuel fumes linger in the air.' },
+  bike:       { score: +5,  positive: true,  msg: '🚲 Less car use means less fuel burned. Small but meaningful change!' },
+  rainwater:  { score: +5,  positive: true,  msg: '🌧️ Rainwater collection reduces energy-intensive water pumping.' },
+  extra_ac:   { score: -10, positive: false, msg: '❄️ Extra air conditioning dramatically increases electricity consumption.' },
+};
+let communityActionsApplied = new Set();
+let communityQAnswered = false;
+let communityQIndex = 0;
+let toAnalysisUnlocked = false;
+
+function applyCommunityAction(key) {
+  if (communityActionsApplied.has(key)) return;
+  communityActionsApplied.add(key);
+  const action = COMMUNITY_ACTIONS[key];
+  ecoScore = Math.min(100, Math.max(0, ecoScore + action.score));
+  updateEcoDisplay();
+  const btn = document.getElementById('btn-'+key);
+  if (btn) { btn.classList.add('applied'); btn.disabled = true; }
+  const msg = document.getElementById('community-msg');
+  msg.className = 'sim-msg show ' + (action.positive ? 'correct' : 'wrong');
+  msg.textContent = action.msg + (action.positive ? '' : ' ⚠️ Eco Score affected!');
+  awardXP(action.positive ? 10 : 2, action.positive ? 'Green choice!' : 'Lesson learned...');
+  showFunFact();
+  const u = loadUser();
+  u.lesson4.ecoScore = ecoScore;
+  saveUser(u);
+  document.getElementById('community-tip').style.display = 'block';
+  checkCommunityComplete();
+}
+
+function checkCommunityComplete() {
+  if (communityActionsApplied.size >= 4 && !toAnalysisUnlocked) {
+    toAnalysisUnlocked = true;
+    document.getElementById('community-q-card').style.display = '';
+    buildCommunityQuestion();
+  }
+}
+
+// 3 non-obvious reflection questions, asked in sequence
+const COMMUNITY_QUESTIONS = [
+  {
+    q: 'A family installs solar panels but still uses a coal generator as backup "just in case." What is the main problem with this approach?',
+    opts: [
+      'Solar panels will break faster',
+      'The coal generator, even on standby, contributes to emissions and undermines the eco benefit',
+      'Backup power is always a good idea and has no downside',
+      'Solar panels cannot work if there is also a generator'
+    ],
+    ans: 1,
+    hint: 'Any fossil fuel device — even on standby — leaks emissions and keeps dependence on non-renewable energy. True eco improvement means reducing non-renewable use entirely.'
+  },
+  {
+    q: 'Which change would have the LEAST impact on reducing a Filipino household\'s carbon footprint?',
+    opts: [
+      'Switching from coal-grid power to solar panels',
+      'Replacing all incandescent bulbs with LED bulbs',
+      'Buying a slightly more fuel-efficient gasoline car',
+      'Insulating the home to reduce air conditioning use'
+    ],
+    ans: 2,
+    hint: 'A slightly more fuel-efficient gasoline car still burns fossil fuel — the gain is marginal. The other options either eliminate emissions entirely or reduce electricity demand significantly.'
+  },
+  {
+    q: 'Rainwater collection is listed as an eco-friendly action. Why does it improve energy efficiency in a Filipino context?',
+    opts: [
+      'Rainwater is chemically cleaner than tap water',
+      'It reduces the need to boil water',
+      'Water pumping and treatment facilities consume large amounts of electricity — collecting rain locally cuts that demand',
+      'It prevents flooding, which damages solar panels'
+    ],
+    ans: 2,
+    hint: 'Municipal water systems require energy-intensive pumping and treatment. Using collected rainwater for non-drinking uses (gardening, flushing) directly reduces grid electricity demand at scale.'
+  }
+];
+
+function buildCommunityQuestion() {
+  const wrap = document.getElementById('community-q-wrap');
+  if (!wrap || communityQIndex >= COMMUNITY_QUESTIONS.length) return;
+  const q = COMMUNITY_QUESTIONS[communityQIndex];
+  wrap.innerHTML = `
+    <div class="kc-question">
+      <div class="kc-q-text">Q${communityQIndex+1}. ${q.q}</div>
+      <div class="kc-options" style="grid-template-columns:1fr" id="comq-opts-${communityQIndex}">
+        ${q.opts.map((o,i)=>`<button class="kc-opt" onclick="answerCommunityQ(${i},${q.ans},'${q.hint.replace(/'/g,"\\'")}',${communityQIndex})">${String.fromCharCode(65+i)}. ${o}</button>`).join('')}
+      </div>
+      <div class="kc-feedback" id="comq-fb-${communityQIndex}"></div>
+    </div>`;
+}
+
+function answerCommunityQ(chosen, correct, hint, qIdx) {
+  const opts = document.querySelectorAll(`#comq-opts-${qIdx} .kc-opt`);
+  opts.forEach(o=>o.disabled=true);
+  opts[chosen].classList.add(chosen===correct?'correct':'wrong');
+  if (chosen!==correct) opts[correct].classList.add('correct');
+  const fb = document.getElementById('comq-fb-'+qIdx);
+  fb.classList.add('show', chosen===correct?'correct':'wrong');
+  fb.textContent = chosen===correct ? '✅ Correct! '+hint : '❌ Not quite. '+hint;
+  if (chosen===correct) awardXP(10, 'Reflection correct!');
+  communityQIndex++;
+  if (communityQIndex < COMMUNITY_QUESTIONS.length) {
+    setTimeout(() => buildCommunityQuestion(), 400);
+  } else {
+    // All questions done
+    document.getElementById('to-analysis-btn').disabled = false;
+    const u = loadUser();
+    u.lesson4.communityDone = true;
+    saveUser(u);
+  }
+}
+
+function updateEcoDisplay() {
+  const pct = Math.min(100, Math.max(0, ecoScore));
+  const bar2 = document.getElementById('eco-bar2');
+  if (bar2) bar2.style.width = pct + '%';
+  const pctEl = document.getElementById('eco-pct2');
+  if (pctEl) pctEl.textContent = pct + '%';
+  const sbEl = document.getElementById('sb-eco-score');
+  if (sbEl) sbEl.textContent = pct + '%';
+  const statusEl = document.getElementById('community-status');
+  if (statusEl) {
+    if (pct >= 80) statusEl.textContent = '🌿 Excellent! Your Filipino community is thriving with clean energy. Keep it up!';
+    else if (pct >= 60) statusEl.textContent = '✅ Good progress! Your community is on the path to sustainability.';
+    else if (pct >= 40) statusEl.textContent = '⚠️ Making progress! Apply more green solutions to improve the Eco Score.';
+    else statusEl.textContent = '❌ Your Filipino home is currently using mostly non-renewable energy. Apply green solutions!';
+  }
+}
+
+/* ── PHASE 2: SORT & MATCH ── */
+const P2_CORRECT = { solar:'renewable', wind:'renewable', hydro:'renewable', coal:'nonrenewable', oil:'nonrenewable', gas:'nonrenewable' };
+const P2_FACTS = [
+  { src:'solar',  label:'☀️ Solar',     fact:'Produces ~0 g CO₂/kWh — pure sunlight converted to electricity' },
+  { src:'coal',   label:'🪨 Coal',      fact:'~820 g CO₂/kWh — the most polluting common fuel source' },
+  { src:'wind',   label:'💨 Wind',      fact:'Bangui Windmills, Ilocos Norte: first wind farm in SE Asia' },
+  { src:'hydro',  label:'💧 Hydro',     fact:'Reliable but rainfall-dependent — affected by dry season' },
+];
+let p2SelectedChip = null;
+let p2SortDone = new Set();
+let p2SelectedLeft = null;
+let p2SelectedRight = null;
+let p2MatchDone = 0;
+let p2SortComplete = false;
+let p2MatchComplete = false;
+
+function selectP2Chip(el) {
+  if (el.classList.contains('placed')) return;
+  document.querySelectorAll('.p2-source-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  p2SelectedChip = el;
+}
+
+function dropToZone(zone) {
+  if (!p2SelectedChip) return;
+  const src = p2SelectedChip.dataset.src;
+  const correct = P2_CORRECT[src] === zone;
+  const itemEl = document.createElement('span');
+  itemEl.className = 'p2-zone-item ' + (correct ? 'correct' : 'wrong');
+  const LABELS = {solar:'☀️ Solar',wind:'💨 Wind',hydro:'💧 Hydro',coal:'🪨 Coal',oil:'🛢️ Oil',gas:'🔥 Gas'};
+  itemEl.textContent = LABELS[src];
+  document.getElementById('zone-'+zone+'-items').appendChild(itemEl);
+  if (correct) {
+    p2SelectedChip.classList.add('placed');
+    p2SortDone.add(src);
+  } else {
+    // Wrong zone: show it then remove
+    setTimeout(() => itemEl.remove(), 900);
+  }
+  p2SelectedChip.classList.remove('selected');
+  p2SelectedChip = null;
+
+  const progress = document.getElementById('p2-sort-progress');
+  if (progress) progress.textContent = `(${p2SortDone.size} / 6 sorted)`;
+
+  if (p2SortDone.size === 6 && !p2SortComplete) {
+    p2SortComplete = true;
+    const msg = document.getElementById('p2-sort-msg');
+    msg.className = 'sim-msg show correct';
+    msg.textContent = '✅ All 6 sorted correctly! Activity 1 complete. Now try Activity 2!';
+    // Unlock match activity
+    document.getElementById('p2-match-card').style.opacity = '1';
+    document.getElementById('p2-match-card').style.pointerEvents = '';
+    buildP2Match();
+    awardXP(10, 'Sort activity done!');
+  }
+}
+
+function buildP2Match() {
+  const grid = document.getElementById('p2-match-grid');
+  if (!grid) return;
+  // Shuffle facts order for right column
+  const shuffled = [...P2_FACTS].sort(() => Math.random() - 0.5);
+  let html = '';
+  P2_FACTS.forEach((item, i) => {
+    html += `<button class="p2-match-item" id="pmatch-src-${item.src}" data-type="src" data-src="${item.src}" onclick="selectMatchItem(this,'src','${item.src}')">${item.label}</button>`;
+  });
+  shuffled.forEach((item, i) => {
+    html += `<button class="p2-match-item" id="pmatch-fact-${item.src}" data-type="fact" data-src="${item.src}" onclick="selectMatchItem(this,'fact','${item.src}')">${item.fact}</button>`;
+  });
+  grid.style.gridTemplateColumns = '1fr 1fr';
+  grid.innerHTML = html;
+}
+
+function selectMatchItem(el, type, src) {
+  if (el.classList.contains('matched')) return;
+  if (type === 'src') {
+    document.querySelectorAll('.p2-match-item[data-type="src"]').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    p2SelectedLeft = src;
+  } else {
+    if (!p2SelectedLeft) return;
+    const correct = p2SelectedLeft === src;
+    const leftEl = document.getElementById('pmatch-src-'+p2SelectedLeft);
+    if (correct) {
+      el.classList.add('matched');
+      if (leftEl) leftEl.classList.add('matched');
+      p2MatchDone++;
+      const prog = document.getElementById('p2-match-progress');
+      if (prog) prog.textContent = `(${p2MatchDone} / 4 matched)`;
+    } else {
+      el.classList.add('wrong-flash');
+      setTimeout(() => el.classList.remove('wrong-flash'), 400);
+      if (leftEl) { leftEl.classList.add('wrong-flash'); setTimeout(() => leftEl.classList.remove('wrong-flash'), 400); }
+    }
+    document.querySelectorAll('.p2-match-item[data-type="src"]').forEach(b => b.classList.remove('selected'));
+    p2SelectedLeft = null;
+
+    if (p2MatchDone === 4 && !p2MatchComplete) {
+      p2MatchComplete = true;
+      const msg = document.getElementById('p2-match-msg');
+      msg.className = 'sim-msg show correct';
+      msg.textContent = '✅ All facts matched! Great work — now see the key formula you\'ve unlocked!';
+      document.getElementById('p2-formula-card').style.display = '';
+      document.getElementById('p2-next-btn').disabled = false;
+      awardXP(10, 'Match activity done!');
+      showFunFact('The formula Total Impact = Energy Used × Emission Factor predicts how much environmental damage each energy choice causes!');
+    }
+  }
+}
+
+/* ── PHASE NAVIGATION ── */
+const PHASE_NAMES = {
+  1:'Knowledge Check', 2:'Sort & Match', 3:'Energy Simulator',
+  4:'Community Power', 5:'Performance Analysis', 6:'Final Quiz', 7:'Results'
+};
+
+function openPhaseNav() {
+  const u = loadUser();
+  const maxPhase = u.lesson4 && u.lesson4.phase ? u.lesson4.phase : 1;
+  const list = document.getElementById('pnav-list');
+  list.innerHTML = '';
+  for (let i=1; i<=7; i++) {
+    const li = document.createElement('li');
+    li.className = 'pnav-item' + (i > maxPhase ? ' locked' : '');
+    const statusText = i === currentPhase ? '(current)' : i < maxPhase ? '✓ done' : i === maxPhase ? '▶ here' : '🔒';
+    const statusColor = i < maxPhase ? 'var(--green)' : i === maxPhase ? 'var(--yellow)' : 'var(--muted)';
+    li.innerHTML = `<span class="pnav-name">Phase ${i} · ${PHASE_NAMES[i]}</span><span class="pnav-status" style="color:${statusColor}">${statusText}</span>`;
+    if (i <= maxPhase) li.onclick = () => { closePhaseNav(); goPhaseReview(i); };
+    list.appendChild(li);
+  }
+  document.getElementById('phase-nav-modal').classList.add('open');
+}
+
+function closePhaseNav() {
+  document.getElementById('phase-nav-modal').classList.remove('open');
+}
+
+function goPhaseReview(n) {
+  // Navigate to phase without awarding XP (review mode)
+  const prev = currentPhase;
+  document.getElementById(PHASE_BLOCKS[prev]).className = 'phase-block';
+  document.getElementById(PHASE_STEPS[prev]).className = 'step-item done';
+  currentPhase = n;
+  document.getElementById(PHASE_BLOCKS[n]).className = 'phase-block active';
+  document.getElementById(PHASE_STEPS[n]).className = 'step-item active';
+  for (let i=1;i<n;i++) { const s=document.getElementById(PHASE_STEPS[i]); if(s) s.className='step-item done'; }
+  window.scrollTo({top:0, behavior:'smooth'});
+  syncSidebar();
+  if (n===5) showAnalysis();
+  if (n===7) showResults();
+}
+function showAnalysis() {
+  const u = loadUser();
+  const l4 = u.lesson4;
+  const simPct = Math.min(100, (l4.simCount||0)/4*100);
+  const goalsPct = Math.min(100, simGoalsDone.size/4*100);
+  const eco = ecoScore;
+
+  document.getElementById('pa-sim-val').textContent = (l4.simCount||0)+' run'+(l4.simCount!==1?'s':'');
+  document.getElementById('pa-goals-val').textContent = simGoalsDone.size+' / 4';
+  document.getElementById('pa-eco-val').textContent = eco+'%';
+  setTimeout(() => {
+    document.getElementById('pa-sim-bar').style.width = simPct+'%';
+    document.getElementById('pa-goals-bar').style.width = goalsPct+'%';
+    document.getElementById('pa-eco-bar').style.width = eco+'%';
+  }, 250);
+
+  const tip = document.getElementById('pa-tip');
+  if (eco >= 80) tip.textContent = '🌿 Amazing eco score! You made all the right choices for a sustainable Filipino community. You clearly understand how renewable energy benefits both local and global environments.';
+  else if (eco >= 55) tip.textContent = '✅ Good effort! You applied several green solutions. Remember: every small action — LED bulbs, solar panels, or unplugging devices — adds up to big local and global benefits.';
+  else tip.textContent = '💡 Keep learning! The more green actions taken in Filipino homes, the better for our environment. Try reviewing the community section to see how individual choices affect the Eco Score.';
+
+  awardXP(10, 'Analysis reviewed!');
+}
+
+/* ── PHASE 6: QUIZ ── */
+const QUIZ = [
+  { q:'In the Philippines, which energy source currently dominates the power grid?', opts:['Solar','Wind','Coal','Geothermal'], ans:2, hint:'Coal provides about 60% of Philippine electricity despite its high emissions.' },
+  { q:'What does the formula "Total Impact = Energy Used × Emission Factor" tell us?', opts:['Higher energy use always means more pollution','Only applies to nuclear energy','Fossil fuels always emit zero','Solar equals coal impact'], ans:0, hint:'The formula shows that using more non-renewable energy multiplies environmental damage.' },
+  { q:'Which of these is a benefit of renewable energy over non-renewable?', opts:['Produces more CO₂','Never runs out','More expensive always','Requires more land always'], ans:1, hint:'Renewable sources like solar and wind are naturally replenished — they do not run out.' },
+  { q:'A Filipino household switches from coal-generated power to solar panels. What happens to CO₂ emissions?', opts:['They increase','They stay the same','They drop to near zero','They double'], ans:2, hint:'Solar panels produce electricity with ~0g CO₂/kWh — drastically reducing household emissions.' },
+  { q:'What is the environmental impact level of solar energy?', opts:['Very High','Medium','High','Very Low'], ans:3, hint:'Solar has a Very Low environmental impact — no emissions and no fuel consumption during operation.' },
+  { q:'Using LED bulbs instead of incandescent bulbs helps because:', opts:['LEDs emit more heat','LEDs use about 75% less energy','LEDs are more expensive always','LEDs require coal to work'], ans:1, hint:'LED bulbs use up to 75–80% less electricity than traditional bulbs for the same brightness.' },
+  { q:'Which energy source is renewable AND available 24 hours a day (with storage)?', opts:['Coal','Solar (with battery)','Oil','Natural Gas'], ans:1, hint:'Solar with battery storage can supply power around the clock — the sun charges batteries during daylight.' },
+  { q:'The Bangui Windmills in Ilocos Norte are an example of which renewable source?', opts:['Solar','Hydro','Wind','Geothermal'], ans:2, hint:'Bangui Windmills harness the strong Amihan winds along the coast of Ilocos Norte.' },
+  { q:'If a community uses high-usage coal power, what happens to environmental impact?', opts:['It decreases','It stays the same','It becomes zero','It increases significantly'], ans:3, hint:'More coal use = more CO₂ × higher emission factor = much greater environmental damage.' },
+  { q:'Which action has the HIGHEST positive effect on a Filipino home\'s Eco Score?', opts:['Keeping appliances plugged in','Installing solar panels','Using coal for cooking','Leaving lights on'], ans:1, hint:'Solar panels provide the biggest Eco Score boost — clean, renewable electricity replaces grid power.' },
+];
+let quizIndex=0, quizScore=0, quizAnswered=false;
+function initQuiz() { quizIndex=0; quizScore=0; renderQuestion(); }
+function renderQuestion() {
+  const q = QUIZ[quizIndex];
+  const el = n => document.getElementById(n);
+  if (el('quiz-counter')) el('quiz-counter').textContent = 'Question '+(quizIndex+1)+' of '+QUIZ.length;
+  if (el('quiz-score-live')) el('quiz-score-live').textContent = 'Score: '+quizScore;
+  if (el('quiz-prog-fill')) el('quiz-prog-fill').style.width = (quizIndex/QUIZ.length*100)+'%';
+  if (el('quiz-q-text')) el('quiz-q-text').textContent = q.q;
+  const opts = el('quiz-opts');
+  if (opts) {
+    opts.innerHTML = '';
+    q.opts.forEach((opt,oi) => {
+      const btn = document.createElement('button');
+      btn.className = 'quiz-opt';
+      btn.textContent = String.fromCharCode(65+oi)+'. '+opt;
+      btn.onclick = () => answerQuiz(oi, q.ans, q.hint);
+      opts.appendChild(btn);
+    });
+  }
+  const fb = el('quiz-feedback');
+  if (fb) { fb.className='quiz-feedback'; fb.textContent=''; }
+  const nb = el('quiz-next-btn');
+  if (nb) nb.classList.add('hidden');
+  quizAnswered = false;
+}
+function answerQuiz(chosen, correct, hint) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const opts = document.querySelectorAll('#quiz-opts .quiz-opt');
+  opts.forEach(o=>o.disabled=true);
+  opts[chosen].classList.add(chosen===correct?'correct':'wrong');
+  if (chosen!==correct) opts[correct].classList.add('correct');
+  if (chosen===correct) { quizScore++; awardXP(10,'Quiz correct!'); }
+  const fb = document.getElementById('quiz-feedback');
+  if (fb) {
+    fb.classList.add('show', chosen===correct?'correct':'wrong');
+    fb.textContent = chosen===correct ? '✅ Correct! '+hint : '❌ Not quite. '+hint;
+  }
+  const nb = document.getElementById('quiz-next-btn');
+  if (nb) { nb.classList.remove('hidden'); nb.textContent = quizIndex<QUIZ.length-1?'Next Question →':'See Results 🏆'; }
+  const sl = document.getElementById('quiz-score-live');
+  if (sl) sl.textContent = 'Score: '+quizScore;
+}
+function nextQuestion() {
+  quizIndex++;
+  if (quizIndex >= QUIZ.length) goPhase(7);
+  else renderQuestion();
+}
+
+/* ── PHASE 7: RESULTS ── */
+function showResults() {
+  document.getElementById('final-score').textContent = quizScore;
+  const bg = document.getElementById('badge-grid');
+  if (!bg) return;
+  bg.innerHTML = '';
+  const badges = [];
+  if (quizScore>=9) badges.push({icon:'🏆',name:'Energy Master'});
+  else if (quizScore>=7) badges.push({icon:'🌿',name:'Eco Champion'});
+  else if (quizScore>=5) badges.push({icon:'📚',name:'Energy Student'});
+  else badges.push({icon:'🔋',name:'Getting Started'});
+  if (ecoScore>=80) badges.push({icon:'🌍',name:'Eco Warrior'});
+  if (simGoalsDone.size>=6) badges.push({icon:'🔬',name:'Simulator Pro'});
+  if (quizScore===10) badges.push({icon:'⭐',name:'Perfect Score!'});
+  badges.forEach((b,i) => {
+    const card = document.createElement('div');
+    card.className = 'badge-card';
+    card.style.animationDelay = (i*.12)+'s';
+    card.innerHTML = '<span class="badge-icon">'+b.icon+'</span><div class="badge-name">'+b.name+'</div>';
+    bg.appendChild(card);
+  });
+  const tip = document.getElementById('final-tip');
+  if (tip) {
+    tip.innerHTML = `
+      <strong>🌿 Lesson 4 Complete!</strong><br>
+      Quiz: <strong style="color:var(--yellow)">${quizScore}/10</strong> ·
+      Eco Score: <strong style="color:var(--accent2)">${ecoScore}%</strong> ·
+      Simulations: <strong style="color:var(--yellow)">${simCount}</strong><br><br>
+      You've learned how energy choices — from Filipino homes to global industry — affect our environment and society.
+      Every renewable switch counts! 🌍`;
+  }
+  const u = loadUser();
+  u.lesson4.quizScore = quizScore;
+  u.lesson4.complete = true;
+  if (!u.lessons) u.lessons = {};
+  u.lessons[4] = u.lessons[4] || {pct:0,unlocked:true};
+  u.lessons[4].pct = 100;
+  saveUser(u);
+  syncLesson4Progress();
+  awardXP(25, 'Lesson 4 Complete! 🎉');
+  showFunFact('Congratulations! You\'ve mastered Energy Sources. The Philippines needs more eco-champions like you! 🌿');
+}
+
+/* ── SYNC PROGRESS ── */
+function syncLesson4Progress() {
+  try {
+    const u = loadUser();
+    const l4 = u.lesson4 || {};
+    let pct = 0;
+    if (l4.phase >= 2) pct = Math.max(pct, 15);
+    if (l4.phase >= 3) pct = Math.max(pct, 30);
+    if ((l4.simCount||0) >= 1) pct = Math.max(pct, 45);
+    if (l4.phase >= 4) pct = Math.max(pct, 55);
+    if (l4.communityDone) pct = Math.max(pct, 65);
+    if (l4.phase >= 5) pct = Math.max(pct, 75);
+    if (l4.phase >= 6) pct = Math.max(pct, 85);
+    if ((l4.quizScore||0) > 0) pct = Math.max(pct, Math.round(80+(l4.quizScore/10)*20));
+    if (l4.complete) pct = 100;
+    if (!u.lessons) u.lessons = {1:{pct:0,unlocked:true},2:{pct:0,unlocked:false},3:{pct:0,unlocked:false},4:{pct:0,unlocked:true}};
+    if (!u.lessons[4]) u.lessons[4] = {pct:0, unlocked:true};
+    u.lessons[4].pct = Math.max(u.lessons[4].pct||0, pct);
+    saveUser(u);
+  } catch(e) {}
+}
+
+/* ── RESTART CONFIRM ── */
+let confirmCallback = null;
+function openConfirm(title, msg, onOk) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  confirmCallback = onOk;
+  document.getElementById('confirm-ok-btn').onclick = () => { closeConfirm(); if(confirmCallback) confirmCallback(); };
+  document.getElementById('confirm-modal').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirm-modal').classList.remove('open'); }
+function confirmRestart() {
+  openConfirm('Restart Lesson 4?', 'This will reset all your Lesson 4 progress, XP earned here, and eco score. Main dashboard progress is unchanged.', () => {
+    const u = loadUser();
+    u.lesson4 = getDefaultUser().lesson4;
+    saveUser(u);
+    window.location.reload();
+  });
+}
+
+/* ── INIT ── */
+const USER = loadUser();
+updateStreak(USER);
+saveUser(USER);
+renderXP(USER);
+buildKnowledgeCheck();
+// Select solar card by default
+const defaultCard = document.querySelector('.energy-type-card[data-src="solar"]');
+if (defaultCard) defaultCard.classList.add('selected');
+currentSelectedSrc = 'solar';
+updateSimPreview();
+syncSidebar();
+syncLesson4Progress();
+resumeToSavedPhase();
+  // Handle ?phase= deep-link from Games tab
+  if (window.ALECS && window.ALECS.handlePhaseDeepLink) window.ALECS.handlePhaseDeepLink(goPhase);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ALECS — Analyzing Laws, Energy &amp; Computational Simulations – Lesson 2: Momentum &amp; Collisions</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ── TOKENS ── */
+:root {
+  --navy:    #0d1b2a;
+  --navy2:   #132233;
+  --navy3:   #1a2e45;
+  --card:    #1e3450;
+  --card2:   #243d5c;
+  --orange:  #ff6b2b;
+  --orange2: #ff8c52;
+  --yellow:  #ffd700;
+  --green:   #22c55e;
+  --red:     #ef4444;
+  --purple:  #9b59b6;
+  --blue:    #3b82f6;
+  --text:    #e8f0fe;
+  --muted:   #7a9cc0;
+  --border:  rgba(255,255,255,.08);
+  --radius:  14px;
+  --ff-head: 'Orbitron', sans-serif;
+  --ff-body: 'Nunito', sans-serif;
+  --accent:  #3b82f6;   /* blue accent for L2 */
+  --accent2: #60a5fa;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--navy);
+  color: var(--text);
+  font-family: var(--ff-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image:
+    linear-gradient(rgba(59,130,246,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 28px;
+  background: var(--navy2);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 200;
+}
+#topbar-left { display: flex; align-items: center; gap: 12px; }
+.logo-link { font-family: var(--ff-head); font-size: 1.15rem; color: var(--accent); text-decoration: none; display: flex; align-items: center; gap: 7px; }
+.lesson-badge { background: var(--accent); color: #fff; font-size: .72rem; font-weight: 800; padding: 3px 12px; border-radius: 20px; letter-spacing: .5px; text-transform: uppercase; }
+#topbar-right { display: flex; align-items: center; gap: 14px; }
+.xp-live { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); }
+.xp-live strong { color: var(--yellow); font-weight: 800; font-family: var(--ff-head); }
+.streak-pill { background: rgba(249,115,22,.15); border: 1px solid rgba(249,115,22,.3); color: var(--orange); padding: 2px 10px; border-radius: 99px; font-size: .78rem; font-weight: 700; }
+
+/* ── XP BAR ── */
+#xp-bar-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 28px; background: var(--navy3);
+  border-bottom: 1px solid var(--border);
+  font-size: .8rem; font-weight: 700;
+}
+#level-lbl { color: var(--yellow); white-space: nowrap; font-family: var(--ff-head); font-size: .75rem; }
+#xp-track { flex: 1; height: 8px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
+#xp-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--yellow)); transition: width .6s ease; }
+#xp-lbl { color: var(--muted); white-space: nowrap; min-width: 90px; text-align: right; }
+
+/* ── PHASE STEPPER ── */
+#phase-stepper {
+  display: flex; justify-content: center;
+  background: var(--navy2); border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+#phase-stepper::-webkit-scrollbar { display: none; }
+.step-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 16px 12px; border-bottom: 3px solid transparent;
+  transition: all .3s; cursor: default; min-width: 70px;
+}
+.step-item.active { border-color: var(--accent); }
+.step-item.done   { border-color: var(--green); }
+.step-bubble {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 800;
+  background: var(--card); border: 2px solid var(--muted); color: var(--muted);
+  margin-bottom: 5px; transition: all .3s;
+}
+.step-item.active .step-bubble { background: var(--accent); border-color: var(--accent); color: #fff; }
+.step-item.done   .step-bubble { background: var(--green); border-color: var(--green); color: #fff; }
+.step-label { font-size: .63rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); white-space: nowrap; }
+.step-item.active .step-label { color: var(--accent2); }
+.step-item.done   .step-label { color: var(--green); }
+
+/* ── LAYOUT ── */
+#page-body { display: flex; min-height: calc(100vh - 120px); }
+
+/* ── SIDEBAR ── */
+#lesson-sidebar {
+  width: 220px; flex-shrink: 0; background: var(--navy2);
+  border-right: 1px solid var(--border); padding: 20px 0 40px;
+  position: sticky; top: 120px;
+  height: calc(100vh - 120px); overflow-y: auto; scrollbar-width: none;
+}
+#lesson-sidebar::-webkit-scrollbar { display: none; }
+.sb-section-label { font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); padding: 0 18px; margin-bottom: 8px; margin-top: 20px; }
+.sb-section-label:first-child { margin-top: 0; }
+.sb-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 18px; background: none; border: none; border-left: 3px solid transparent; color: var(--muted); font-family: var(--ff-body); font-size: .88rem; font-weight: 700; cursor: pointer; text-align: left; text-decoration: none; transition: color .2s, background .2s, border-color .2s; }
+.sb-btn:hover { background: rgba(59,130,246,.06); color: var(--text); border-color: var(--accent); }
+.sb-btn.danger:hover { background: rgba(239,68,68,.08); color: var(--red); border-color: var(--red); }
+.sb-btn .sb-icon { font-size: 1rem; width: 22px; text-align: center; }
+.sb-phase-list { padding: 0; list-style: none; }
+.sb-phase-item { display: flex; align-items: center; gap: 10px; padding: 8px 18px; font-size: .82rem; font-weight: 700; color: var(--muted); transition: color .2s; }
+.sb-phase-item.active { color: var(--accent2); }
+.sb-phase-item.done   { color: var(--green); }
+.sb-phase-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background .3s; }
+.sb-phase-item.active .sb-phase-dot { background: var(--accent); }
+.sb-phase-item.done   .sb-phase-dot { background: var(--green); }
+.sb-divider { height: 1px; background: var(--border); margin: 14px 18px; }
+
+/* ── CONTENT ── */
+#lesson-content { flex: 1; min-width: 0; padding: 28px 28px 80px; }
+.phase-block { display: none; }
+.phase-block.active { display: block; }
+
+/* ── CONFIRM MODAL ── */
+#confirm-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9999; align-items: center; justify-content: center; }
+#confirm-modal.open { display: flex; }
+#confirm-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px; max-width: 380px; width: 90%; text-align: center; }
+#confirm-box h3 { font-family: var(--ff-head); font-size: 1rem; color: var(--text); margin-bottom: 10px; }
+#confirm-box p  { font-size: .88rem; color: var(--muted); line-height: 1.6; margin-bottom: 22px; }
+#confirm-box .gap-row { justify-content: center; }
+
+/* ── SECTION HEADER ── */
+.section-header { text-align: center; margin-bottom: 26px; }
+.phase-tag { display: inline-block; background: var(--accent); color: #fff; font-size: .7rem; font-weight: 800; padding: 3px 12px; border-radius: 12px; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+.section-header h2 { font-family: var(--ff-head); font-size: 1.5rem; color: var(--text); margin-bottom: 8px; }
+.section-header p { color: var(--muted); font-size: .92rem; line-height: 1.6; max-width: 560px; margin: 0 auto; }
+
+/* ── CARDS ── */
+.l1-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 16px; }
+.l1-card-title { font-family: var(--ff-head); font-size: .85rem; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+
+/* ── BUTTONS ── */
+.l1-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 26px; border: none; border-radius: 10px; font-family: var(--ff-body); font-weight: 800; font-size: .93rem; cursor: pointer; transition: .2s; }
+.l1-btn-primary  { background: var(--accent); color: #fff; }
+.l1-btn-primary:hover  { background: var(--accent2); transform: translateY(-1px); }
+.l1-btn-secondary { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
+.l1-btn-secondary:hover { background: var(--navy3); }
+.l1-btn-green    { background: var(--green); color: #fff; }
+.l1-btn-green:hover { filter: brightness(1.1); }
+.l1-btn-sm { padding: 7px 16px; font-size: .82rem; }
+.l1-btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+
+/* ── KNOWLEDGE CHECK ── */
+.kc-question { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+.kc-q-text { font-weight: 700; font-size: .96rem; line-height: 1.55; margin-bottom: 14px; }
+.kc-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kc-opt { background: var(--navy3); border: 2px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: pointer; font-family: var(--ff-body); font-size: .88rem; font-weight: 600; color: var(--text); text-align: left; transition: border-color .2s, background .2s; }
+.kc-opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(59,130,246,.08); }
+.kc-opt.correct { background: rgba(34,197,94,.12); border-color: var(--green); color: var(--green); }
+.kc-opt.wrong   { background: rgba(239,68,68,.12); border-color: var(--red); color: var(--red); }
+.kc-opt:disabled { cursor: default; }
+.kc-feedback { margin-top: 10px; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: .86rem; display: none; }
+.kc-feedback.show { display: block; }
+.kc-feedback.correct { background: rgba(34,197,94,.12); border: 1px solid var(--green); color: var(--green); }
+.kc-feedback.wrong   { background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+
+/* ── CONCEPTS ── */
+.formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.formula-item { background: var(--navy3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.formula-item.wide { grid-column: 1 / -1; }
+.formula-eq { font-family: var(--ff-head); font-size: .88rem; color: var(--yellow); margin-bottom: 6px; }
+.formula-item p { font-size: .82rem; color: var(--muted); line-height: 1.55; }
+
+/* ── SIMULATION GAME (Phase 3) ── */
+.sim-panel { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+.sim-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.sim-title { font-family: var(--ff-head); font-size: .85rem; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; }
+.sim-phase-badge { background: var(--navy3); border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+#sim-canvas { display: block; width: 100%; background: #0a1628; }
+.sim-controls { padding: 14px 18px; background: var(--card2); border-top: 1px solid var(--border); }
+.control-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.control-row label { font-size: .82rem; font-weight: 700; color: var(--muted); min-width: 220px; }
+.control-row label span { color: var(--yellow); font-family: var(--ff-head); font-size: .85rem; min-width: 60px; display: inline-block; }
+.control-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
+.sim-stats { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px; background: var(--navy3); border-top: 1px solid var(--border); }
+.stat-chip { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: .78rem; color: var(--muted); }
+.stat-chip strong { color: var(--yellow); font-weight: 800; }
+.sim-msg { display: none; margin: 12px 18px 0; padding: 12px 16px; border-radius: 10px; font-weight: 700; font-size: .94rem; text-align: center; }
+.sim-msg.show.correct { display: block; background: rgba(34,197,94,.15); border: 1px solid var(--green); color: var(--green); }
+.sim-msg.show.wrong   { display: block; background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+.sim-msg.show.info    { display: block; background: rgba(59,130,246,.1); border: 1px solid var(--accent); color: var(--accent2); }
+
+/* ── COLLISION TYPE TOGGLE ── */
+.col-type-row { display: flex; gap: 10px; padding: 10px 18px; }
+.col-type-btn { flex: 1; padding: 9px; border: 2px solid var(--border); border-radius: 10px; background: var(--navy3); color: var(--muted); font-family: var(--ff-body); font-weight: 800; font-size: .85rem; cursor: pointer; transition: .2s; }
+.col-type-btn.active { border-color: var(--accent); background: rgba(59,130,246,.1); color: var(--accent2); }
+
+/* ── PHASE PROGRESS STRIP ── */
+#sim-goals-strip { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; background: var(--navy2); border-bottom: 1px solid var(--border); margin-bottom: 16px; border-radius: var(--radius); }
+.goal-pill { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: .78rem; font-weight: 700; color: var(--muted); transition: .3s; }
+.goal-pill.done { background: rgba(34,197,94,.1); border-color: var(--green); color: var(--green); }
+.goal-pill .gp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: .3s; }
+.goal-pill.done .gp-dot { background: var(--green); }
+#goals-count { font-size: .82rem; font-weight: 800; color: var(--yellow); font-family: var(--ff-head); margin-left: auto; }
+
+/* ── MOMENTUM BARS ── */
+.mom-bar-wrap { margin-bottom: 12px; }
+.mom-bar-label { display: flex; justify-content: space-between; font-size: .82rem; font-weight: 700; margin-bottom: 4px; }
+.mom-bar-track { height: 18px; background: var(--navy3); border-radius: 6px; overflow: hidden; }
+.mom-bar-fill { height: 100%; border-radius: 6px; transition: width .6s ease; }
+.mom-bar-fill.a { background: linear-gradient(90deg, var(--accent), var(--blue)); }
+.mom-bar-fill.b { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+
+/* ── SAFETY BUTTONS ── */
+.safety-grid { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+.safety-btn { padding: 10px 18px; border: 2px solid var(--border); border-radius: 12px; background: var(--navy3); color: var(--muted); font-family: var(--ff-body); font-weight: 800; font-size: .85rem; cursor: pointer; transition: .2s; }
+.safety-btn:hover { border-color: var(--green); color: var(--green); background: rgba(34,197,94,.08); }
+.safety-btn.active { border-color: var(--green); color: var(--green); background: rgba(34,197,94,.12); }
+
+/* ── ANALYSIS ── */
+.perf-bar-row { margin-bottom: 14px; }
+.perf-bar-labels { display: flex; justify-content: space-between; font-size: .84rem; font-weight: 700; margin-bottom: 6px; }
+.perf-bar-labels span:last-child { color: var(--yellow); }
+.perf-bar-track { height: 12px; background: var(--navy3); border-radius: 6px; overflow: hidden; }
+.perf-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--yellow)); width: 0; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+.perf-bar-fill.purple { background: linear-gradient(90deg, var(--purple), var(--accent)); }
+.tip-callout { background: rgba(59,130,246,.08); border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; padding: 12px 18px; font-size: .9rem; line-height: 1.65; margin-top: 16px; color: var(--text); }
+
+/* ── QUIZ ── */
+.quiz-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.quiz-counter { font-size: .84rem; color: var(--muted); font-weight: 700; }
+.quiz-score-live { font-size: .84rem; color: var(--yellow); font-weight: 800; font-family: var(--ff-head); }
+.quiz-progress-bar { height: 6px; background: var(--navy3); border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
+.quiz-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .5s ease; }
+.quiz-q-text { font-weight: 700; font-size: 1rem; line-height: 1.55; margin-bottom: 16px; }
+.quiz-options { display: flex; flex-direction: column; gap: 10px; }
+.quiz-opt { background: var(--navy3); border: 2px solid var(--border); border-radius: 10px; padding: 11px 18px; cursor: pointer; font-family: var(--ff-body); font-size: .92rem; font-weight: 600; color: var(--text); text-align: left; transition: border-color .2s, background .2s; }
+.quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+.quiz-opt.correct { background: rgba(34,197,94,.12); border-color: var(--green); color: var(--green); }
+.quiz-opt.wrong   { background: rgba(239,68,68,.12); border-color: var(--red); color: var(--red); }
+.quiz-opt:disabled { cursor: default; }
+.quiz-feedback { margin-top: 14px; padding: 10px 16px; border-radius: 8px; font-weight: 700; font-size: .87rem; display: none; line-height: 1.5; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct { background: rgba(34,197,94,.12); border: 1px solid var(--green); color: var(--green); }
+.quiz-feedback.wrong   { background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red); }
+
+/* ── RESULTS ── */
+.result-hero { text-align: center; padding: 28px 0 20px; }
+.result-score-num { font-family: var(--ff-head); font-size: 4.5rem; color: var(--yellow); line-height: 1; display: block; }
+.result-score-denom { font-size: .88rem; color: var(--muted); margin-top: 6px; }
+.badge-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin: 18px 0; }
+.badge-card { background: var(--card2); border: 2px solid var(--yellow); border-radius: 16px; padding: 16px 20px; text-align: center; min-width: 120px; animation: badge-pop .4s cubic-bezier(.34,1.56,.64,1) both; }
+.badge-card .badge-icon { font-size: 2.2rem; display: block; margin-bottom: 8px; }
+.badge-card .badge-name { font-weight: 800; color: var(--yellow); font-size: .82rem; font-family: var(--ff-head); }
+@keyframes badge-pop { 0%{transform:scale(0);opacity:0;} 100%{transform:scale(1);opacity:1;} }
+.takeaways-list { list-style: none; font-size: .9rem; line-height: 2; color: var(--muted); }
+.takeaways-list li strong { color: var(--text); }
+
+/* ── XP TOAST ── */
+#xp-toast { position: fixed; top: 80px; right: 24px; background: var(--card2); border: 2px solid var(--yellow); border-radius: 12px; padding: 10px 18px; font-weight: 800; font-size: .88rem; color: var(--yellow); font-family: var(--ff-head); transform: translateX(140%); transition: transform .4s cubic-bezier(.34,1.56,.64,1); z-index: 500; white-space: nowrap; }
+#xp-toast.show { transform: translateX(0); }
+
+/* ── FUNFACT TOAST ── */
+#funfact-toast { position: fixed; bottom: 28px; right: 28px; background: var(--card2); border: 2px solid var(--yellow); border-radius: 14px; padding: 14px 38px 14px 18px; max-width: 300px; font-size: .83rem; line-height: 1.55; z-index: 999; transform: translateX(140%); transition: transform .4s cubic-bezier(.34,1.56,.64,1); }
+#funfact-toast.show { transform: translateX(0); }
+#funfact-toast .ff-label { font-weight: 800; color: var(--yellow); font-size: .8rem; margin-bottom: 5px; display: block; }
+#funfact-toast .ff-close { position: absolute; top: 8px; right: 12px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; }
+
+/* ── DRAG & DROP (Phase 2) ── */
+.drag-bank {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin-bottom: 18px; min-height: 48px;
+  padding: 12px 14px;
+  background: var(--navy3); border: 1px dashed var(--border); border-radius: 10px;
+}
+.drag-bank-label { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 8px; }
+.drag-chip {
+  background: linear-gradient(135deg, var(--accent), #2563eb);
+  color: #fff; padding: 8px 18px; border-radius: 20px;
+  font-weight: 800; font-size: .82rem; cursor: grab;
+  user-select: none; transition: opacity .2s, transform .15s, box-shadow .2s;
+  font-family: var(--ff-head); letter-spacing: .3px;
+  box-shadow: 0 2px 8px rgba(59,130,246,.3);
+}
+.drag-chip:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(59,130,246,.45); }
+.drag-chip:active { cursor: grabbing; opacity: .65; transform: scale(.96); }
+.drag-chip.placed { opacity: .25; pointer-events: none; transform: none; box-shadow: none; }
+.l2-drop-zone {
+  border: 2px dashed rgba(59,130,246,.35); border-radius: 10px;
+  padding: 11px 16px; min-height: 50px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: .84rem; color: var(--muted);
+  margin-bottom: 9px; transition: border-color .2s, background .2s;
+  position: relative;
+}
+.l2-drop-zone .dz-label { flex: 1; font-style: italic; }
+.l2-drop-zone .dz-slot {
+  min-width: 170px; padding: 6px 14px; border-radius: 20px;
+  background: var(--navy3); border: 2px dashed rgba(59,130,246,.25);
+  font-size: .8rem; color: var(--muted); text-align: center;
+  font-family: var(--ff-head); transition: all .2s;
+}
+.l2-drop-zone.drag-over { border-color: var(--accent); background: rgba(59,130,246,.07); }
+.l2-drop-zone.drag-over .dz-slot { border-color: var(--accent); }
+.l2-drop-zone.filled .dz-slot { background: rgba(59,130,246,.15); border-color: var(--accent); color: var(--accent2); border-style: solid; }
+.l2-drop-zone.correct .dz-slot { background: rgba(34,197,94,.15); border-color: var(--green); color: var(--green); border-style: solid; }
+.l2-drop-zone.wrong .dz-slot { background: rgba(239,68,68,.12); border-color: var(--red); color: var(--red); border-style: solid; }
+.l2-drop-zone .dz-correct-ans { display: none; font-size: .75rem; color: var(--muted); margin-top: 4px; font-style: italic; }
+.l2-drop-zone.wrong .dz-correct-ans { display: block; }
+#l2-drag-result {
+  margin-top: 14px; padding: 11px 16px; border-radius: 10px;
+  font-weight: 800; font-size: .9rem; display: none;
+}
+#l2-drag-result.show.correct { display: block; background: rgba(34,197,94,.12); border: 1px solid var(--green); color: var(--green); }
+#l2-drag-result.show.wrong   { display: block; background: rgba(239,68,68,.1); border: 1px solid var(--red); color: var(--red); }
+#l2-drag-result.show.info    { display: block; background: rgba(59,130,246,.1); border: 1px solid var(--accent); color: var(--accent2); }
+.dd-score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: .83rem; color: var(--muted); font-weight: 700; }
+.dd-score-badge { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; font-family: var(--ff-head); font-size: .78rem; color: var(--yellow); }
+.dd-attempts-badge { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; font-size: .78rem; color: var(--muted); }
+
+/* ── UTILS ── */
+
+/* ── PHASE NAV MODAL ── */
+#phase-nav-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 9999; align-items: center; justify-content: center; }
+#phase-nav-modal.open { display: flex; }
+#phase-nav-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; max-width: 420px; width: 92%; }
+#phase-nav-box h3 { font-family: var(--ff-head); font-size: .95rem; color: var(--text); margin-bottom: 6px; }
+#phase-nav-box p { font-size: .83rem; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+.pnav-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; padding: 0; }
+.pnav-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--navy3); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: .2s; }
+.pnav-item:hover { border-color: var(--accent); background: rgba(255,107,43,.06); }
+.pnav-item.locked { opacity: .35; cursor: not-allowed; }
+.pnav-item .pnav-name { font-weight: 700; font-size: .88rem; color: var(--text); }
+.pnav-item .pnav-status { font-size: .75rem; font-weight: 700; color: var(--green); }
+
+.hidden { display: none !important; }
+.text-center { text-align: center; }
+.mt-4 { margin-top: 16px; }
+.gap-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.info-box { background: rgba(59,130,246,.07); border: 1px solid rgba(59,130,246,.2); border-radius: 10px; padding: 12px 16px; font-size: .86rem; line-height: 1.6; color: var(--text); margin-bottom: 12px; }
+.conserved-badge { display: inline-block; background: rgba(34,197,94,.15); border: 1px solid var(--green); border-radius: 8px; padding: 4px 12px; font-size: .8rem; font-weight: 800; color: var(--green); margin-top: 8px; }
+
+@media (max-width:640px) {
+  .kc-options { grid-template-columns: 1fr; }
+  .formula-grid { grid-template-columns: 1fr; }
+  .formula-item.wide { grid-column: 1; }
+  .step-label { display: none; }
+  .step-item { min-width: 44px; padding: 10px 8px 12px; }
+  .result-score-num { font-size: 3rem; }
+  #lesson-sidebar { display: none; }
+  #lesson-content { padding: 18px 14px 60px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div id="topbar-left">
+    <a href="index.html" class="logo-link">🍎 ALECS</a>
+    <span class="lesson-badge">Lesson 2 · Momentum &amp; Collisions</span>
+  </div>
+  <div id="topbar-right">
+    <div class="xp-live">⚡ XP: <strong id="xp-display">0</strong></div>
+    <div class="streak-pill" id="streak-display">🔥 0-day streak</div>
+  </div>
+</div>
+
+<!-- XP BAR -->
+<div id="xp-bar-row">
+  <span id="level-lbl">⚡ Level 1</span>
+  <div id="xp-track"><div id="xp-fill" style="width:0%"></div></div>
+  <span id="xp-lbl">0 / 1000 XP</span>
+</div>
+
+<!-- PHASE STEPPER -->
+<div id="phase-stepper">
+  <div class="step-item active" id="step-1"><div class="step-bubble">1</div><div class="step-label">Check</div></div>
+  <div class="step-item" id="step-2"><div class="step-bubble">2</div><div class="step-label">Concepts</div></div>
+  <div class="step-item" id="step-3"><div class="step-bubble">3</div><div class="step-label">Sim Lab</div></div>
+  <div class="step-item" id="step-4"><div class="step-bubble">4</div><div class="step-label">Analysis</div></div>
+  <div class="step-item" id="step-5"><div class="step-bubble">5</div><div class="step-label">Quiz</div></div>
+  <div class="step-item" id="step-6"><div class="step-bubble">6</div><div class="step-label">Results</div></div>
+</div>
+
+<!-- PHASE NAV MODAL -->
+<div id="phase-nav-modal">
+  <div id="phase-nav-box">
+    <h3>📍 Phase Navigation</h3>
+    <p>Review your progress or revisit any completed phase. XP is not re-awarded in review mode.</p>
+    <ul class="pnav-list" id="pnav-list"></ul>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="closePhaseNav()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirm-modal">
+  <div id="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="gap-row">
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="closeConfirm()">Cancel</button>
+      <button class="l1-btn l1-btn-primary l1-btn-sm" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE BODY -->
+<div id="page-body">
+
+<!-- SIDEBAR -->
+<nav id="lesson-sidebar">
+  <div class="sb-section-label">Navigate</div>
+  <a href="index.html" class="sb-btn"><span class="sb-icon">🏠</span> Main Menu</a>
+  <button class="sb-btn" onclick="openPhaseNav()"><span class="sb-icon">📍</span> Phase Navigation</button>
+  <button class="sb-btn danger" onclick="confirmRestart()"><span class="sb-icon">↺</span> Restart Lesson</button>
+
+  <div class="sb-divider"></div>
+  <div class="sb-section-label">Phases</div>
+  <ul class="sb-phase-list" id="sb-phase-list">
+    <li class="sb-phase-item active" id="sb-step-1"><div class="sb-phase-dot"></div>1 · Knowledge Check</li>
+    <li class="sb-phase-item" id="sb-step-2"><div class="sb-phase-dot"></div>2 · Concepts</li>
+    <li class="sb-phase-item" id="sb-step-3"><div class="sb-phase-dot"></div>3 · Collision Lab</li>
+    <li class="sb-phase-item" id="sb-step-4"><div class="sb-phase-dot"></div>4 · Analysis</li>
+    <li class="sb-phase-item" id="sb-step-5"><div class="sb-phase-dot"></div>5 · Final Quiz</li>
+    <li class="sb-phase-item" id="sb-step-6"><div class="sb-phase-dot"></div>6 · Results</li>
+  </ul>
+
+  <div class="sb-divider"></div>
+  <div class="sb-section-label">Your Stats</div>
+  <div style="padding:0 18px">
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px">XP Earned This Lesson</div>
+    <div style="font-family:var(--ff-head);font-size:1.1rem;color:var(--yellow)" id="sb-xp-earned">0 XP</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:10px;margin-bottom:4px">Current Streak</div>
+    <div style="font-size:.88rem;color:var(--orange);font-weight:700" id="sb-streak">🔥 0-day streak</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:10px;margin-bottom:4px">Phase Progress</div>
+    <div style="font-size:.88rem;color:var(--accent2);font-weight:700" id="sb-phase-prog">Phase 1 of 6</div>
+  </div>
+</nav>
+
+<!-- LESSON CONTENT -->
+<div id="lesson-content">
+
+<!-- ═══════════════════════════════════════
+     PHASE 1 – KNOWLEDGE CHECK
+═══════════════════════════════════════ -->
+<div id="phase-1" class="phase-block active">
+  <div class="section-header">
+    <div class="phase-tag">Phase 1 · Knowledge Check</div>
+    <h2>💥 What Do You Already Know?</h2>
+    <p>Answer all 5 questions before moving on. Don't worry — there's no penalty for wrong answers!</p>
+  </div>
+  <div id="kc-questions-wrap"></div>
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" id="kc-next-btn" disabled onclick="goPhase(2)">Next: Concepts &amp; Formulas 📚 →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PHASE 2 – CONCEPTS & FORMULAS
+═══════════════════════════════════════ -->
+<div id="phase-2" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 2 · Concepts</div>
+    <h2>📚 Momentum &amp; Collisions</h2>
+    <p>Master the key formulas and ideas before heading to the Collision Lab!</p>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">⚡ What is Momentum?</div>
+    <p style="font-size:.9rem;color:var(--muted);line-height:1.75;margin-bottom:14px">
+      <strong style="color:var(--text)">Momentum (p)</strong> is the "quantity of motion" an object has. A heavy truck moving slowly can have the same momentum as a small bullet moving very fast. The harder an object is to stop, the more momentum it has!
+    </p>
+    <div class="formula-grid">
+      <div class="formula-item">
+        <div class="formula-eq">p = m × v</div>
+        <p><strong>p</strong> = momentum (kg·m/s)<br><strong>m</strong> = mass (kg)<br><strong>v</strong> = velocity (m/s)</p>
+      </div>
+      <div class="formula-item">
+        <div class="formula-eq">F = Δp / t</div>
+        <p><strong>F</strong> = force (N)<br><strong>Δp</strong> = change in momentum<br><strong>t</strong> = stopping time (s)</p>
+      </div>
+      <div class="formula-item wide">
+        <div class="formula-eq">m₁v₁ + m₂v₂ = m₁v₁' + m₂v₂'</div>
+        <p><strong>Conservation of Momentum</strong> — Total momentum before a collision equals total momentum after. This holds for both elastic and inelastic collisions.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">🎯 Elastic vs Inelastic Collisions</div>
+    <div class="formula-grid">
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--green)">⚡ Elastic</div>
+        <p>Objects <strong style="color:var(--text)">bounce apart</strong> after collision. Both momentum AND kinetic energy are conserved. Example: billiard balls hitting each other.</p>
+      </div>
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--orange)">💥 Inelastic</div>
+        <p>Objects <strong style="color:var(--text)">stick together</strong> after collision. Momentum is conserved but kinetic energy is NOT fully conserved. Example: two clay balls colliding.</p>
+      </div>
+      <div class="formula-item wide">
+        <div class="formula-eq">Inelastic final velocity: v' = (m₁v₁ + m₂v₂) / (m₁ + m₂)</div>
+        <p>When objects stick together their combined mass moves at this final velocity.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">🛡️ Impulse &amp; Safety Features</div>
+    <div class="formula-grid">
+      <div class="formula-item">
+        <div class="formula-eq">Impulse = F × t = Δp</div>
+        <p>Impulse equals the change in momentum. Increasing stopping time <strong style="color:var(--text)">reduces the force</strong> experienced — this is why airbags and crumple zones save lives!</p>
+      </div>
+      <div class="formula-item">
+        <div class="formula-eq" style="color:var(--green)">Safety Devices</div>
+        <p><strong style="color:var(--text)">Seatbelts, airbags, crumple zones</strong> all work by increasing the collision time (t), which reduces force F = Δp/t and protects passengers.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="l1-card" id="l2-dragdrop-card">
+    <div class="l1-card-title">🧩 Match the Formula to Its Meaning</div>
+    <p style="font-size:.84rem;color:var(--muted);margin-bottom:14px">Drag each blue chip to the drop zone that matches its description. Get all 5 correct to earn bonus XP!</p>
+
+    <div class="dd-score-row">
+      <span>Score:</span>
+      <span class="dd-score-badge" id="dd-score-badge">0 / 5</span>
+      <span style="margin-left:auto">Attempts:</span>
+      <span class="dd-attempts-badge" id="dd-attempts-badge">0</span>
+    </div>
+
+    <div class="drag-bank-label">Drag from here 👇</div>
+    <div class="drag-bank" id="l2-drag-bank">
+      <div class="drag-chip l2-chip" draggable="true" data-val="p = m × v" id="l2dc-1">p = m × v</div>
+      <div class="drag-chip l2-chip" draggable="true" data-val="F = Δp / t" id="l2dc-2">F = Δp / t</div>
+      <div class="drag-chip l2-chip" draggable="true" data-val="m₁v₁ + m₂v₂ = m₁v₁' + m₂v₂'" id="l2dc-3">Conservation Law</div>
+      <div class="drag-chip l2-chip" draggable="true" data-val="Impulse = F × t" id="l2dc-4">Impulse = F × t</div>
+      <div class="drag-chip l2-chip" draggable="true" data-val="v' = (m₁v₁ + m₂v₂) / (m₁ + m₂)" id="l2dc-5">Inelastic v'</div>
+    </div>
+
+    <div class="l2-drop-zone" data-answer="p = m × v" id="l2dz-1">
+      <span class="dz-label">Momentum of a moving object</span>
+      <div>
+        <div class="dz-slot" id="l2dz-slot-1">Drop formula here</div>
+        <div class="dz-correct-ans">✓ Correct: p = m × v</div>
+      </div>
+    </div>
+    <div class="l2-drop-zone" data-answer="F = Δp / t" id="l2dz-2">
+      <span class="dz-label">Force needed to change momentum over time</span>
+      <div>
+        <div class="dz-slot" id="l2dz-slot-2">Drop formula here</div>
+        <div class="dz-correct-ans">✓ Correct: F = Δp / t</div>
+      </div>
+    </div>
+    <div class="l2-drop-zone" data-answer="m₁v₁ + m₂v₂ = m₁v₁' + m₂v₂'" id="l2dz-3">
+      <span class="dz-label">Total momentum before = total momentum after collision</span>
+      <div>
+        <div class="dz-slot" id="l2dz-slot-3">Drop formula here</div>
+        <div class="dz-correct-ans">✓ Correct: Conservation Law</div>
+      </div>
+    </div>
+    <div class="l2-drop-zone" data-answer="Impulse = F × t" id="l2dz-4">
+      <span class="dz-label">Change in momentum = force × time applied</span>
+      <div>
+        <div class="dz-slot" id="l2dz-slot-4">Drop formula here</div>
+        <div class="dz-correct-ans">✓ Correct: Impulse = F × t</div>
+      </div>
+    </div>
+    <div class="l2-drop-zone" data-answer="v' = (m₁v₁ + m₂v₂) / (m₁ + m₂)" id="l2dz-5">
+      <span class="dz-label">Final velocity when two objects stick together</span>
+      <div>
+        <div class="dz-slot" id="l2dz-slot-5">Drop formula here</div>
+        <div class="dz-correct-ans">✓ Correct: Inelastic v'</div>
+      </div>
+    </div>
+
+    <div id="l2-drag-result"></div>
+    <div class="mt-4 gap-row">
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="checkL2Drag()">Check Matches ✓</button>
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="resetL2Drag()">Reset ↺</button>
+    </div>
+  </div>
+
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" id="p2-next-btn" disabled onclick="goPhase(3)">Let's Experiment: Collision Lab 💥 →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PHASE 3 – COLLISION LAB SIMULATION
+═══════════════════════════════════════ -->
+<div id="phase-3" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 3 · Collision Lab</div>
+    <h2>💥 Momentum &amp; Collision Lab</h2>
+    <p>Run all 4 experiments to unlock Analysis. Adjust mass &amp; velocity, choose collision type, then observe!</p>
+  </div>
+
+  <!-- GOALS STRIP -->
+  <div id="sim-goals-strip">
+    <div class="goal-pill" id="sim-goal-1"><div class="gp-dot"></div>Momentum Calc</div>
+    <div class="goal-pill" id="sim-goal-2"><div class="gp-dot"></div>Elastic Collision</div>
+    <div class="goal-pill" id="sim-goal-3"><div class="gp-dot"></div>Inelastic Collision</div>
+    <div class="goal-pill" id="sim-goal-4"><div class="gp-dot"></div>Safety Feature</div>
+    <div id="goals-count">0 / 4</div>
+  </div>
+
+  <!-- MOMENTUM CALCULATOR -->
+  <div class="l1-card">
+    <div class="l1-card-title">⚡ Phase A — Momentum Calculator</div>
+    <p style="font-size:.84rem;color:var(--muted);margin-bottom:14px">Set mass and velocity for two objects and compare their momentum. Which is harder to stop?</p>
+
+    <div class="control-row">
+      <label>Object A — Mass: <span id="ma-val">1000</span> kg</label>
+      <input type="range" id="mass-a" min="100" max="5000" step="100" value="1000" oninput="updateMomentum()">
+    </div>
+    <div class="control-row">
+      <label>Object A — Velocity: <span id="va-val">10</span> m/s</label>
+      <input type="range" id="vel-a" min="1" max="50" step="1" value="10" oninput="updateMomentum()">
+    </div>
+    <div class="control-row">
+      <label>Object B — Mass: <span id="mb-val">500</span> kg</label>
+      <input type="range" id="mass-b" min="100" max="5000" step="100" value="500" oninput="updateMomentum()">
+    </div>
+    <div class="control-row">
+      <label>Object B — Velocity: <span id="vb-val">20</span> m/s</label>
+      <input type="range" id="vel-b" min="1" max="50" step="1" value="20" oninput="updateMomentum()">
+    </div>
+
+    <div class="mom-bar-wrap" style="margin-top:14px">
+      <div class="mom-bar-label"><span>Object A: <strong id="pa-label">—</strong></span><span id="pa-win" style="color:var(--accent2)"></span></div>
+      <div class="mom-bar-track"><div class="mom-bar-fill a" id="pa-bar" style="width:0%"></div></div>
+    </div>
+    <div class="mom-bar-wrap">
+      <div class="mom-bar-label"><span>Object B: <strong id="pb-label">—</strong></span></div>
+      <div class="mom-bar-track"><div class="mom-bar-fill b" id="pb-bar" style="width:0%"></div></div>
+    </div>
+    <div id="mom-verdict" class="info-box" style="display:none"></div>
+    <div class="text-center mt-4">
+      <button class="l1-btn l1-btn-primary l1-btn-sm" onclick="calcMomentum()">⚡ Calculate Momentum</button>
+    </div>
+  </div>
+
+  <!-- COLLISION SIMULATION -->
+  <div class="l1-card" style="padding:0;overflow:hidden">
+    <div class="sim-header">
+      <div class="sim-title">💥 Phase B — Collision Simulation</div>
+      <div class="sim-phase-badge" id="col-type-display">Type: Elastic</div>
+    </div>
+
+    <!-- COLLISION TYPE TOGGLE -->
+    <div class="col-type-row">
+      <button class="col-type-btn active" id="btn-elastic" onclick="setCollisionType('elastic')">⚡ Elastic (Bounce)</button>
+      <button class="col-type-btn" id="btn-inelastic" onclick="setCollisionType('inelastic')">💥 Inelastic (Stick)</button>
+    </div>
+
+    <!-- CANVAS -->
+    <canvas id="sim-canvas" height="180"></canvas>
+
+    <!-- CONTROLS -->
+    <div class="sim-controls">
+      <div class="control-row">
+        <label>Block A Mass: <span id="sim-ma-val">2</span> kg</label>
+        <input type="range" id="sim-mass-a" min="1" max="10" step="0.5" value="2" oninput="updateSimPreview()">
+      </div>
+      <div class="control-row">
+        <label>Block A Velocity: <span id="sim-va-val">5</span> m/s →</label>
+        <input type="range" id="sim-vel-a" min="1" max="15" step="0.5" value="5" oninput="updateSimPreview()">
+      </div>
+      <div class="control-row">
+        <label>Block B Mass: <span id="sim-mb-val">2</span> kg</label>
+        <input type="range" id="sim-mass-b" min="1" max="10" step="0.5" value="2" oninput="updateSimPreview()">
+      </div>
+      <div class="control-row">
+        <label>Block B Velocity: <span id="sim-vb-val">5</span> m/s ←</label>
+        <input type="range" id="sim-vel-b" min="1" max="15" step="0.5" value="5" oninput="updateSimPreview()">
+      </div>
+      <div class="control-row">
+        <label>Starting Distance: <span id="sim-dist-val">3</span> m apart</label>
+        <input type="range" id="sim-distance" min="1" max="10" step="0.5" value="3" oninput="updateSimPreview()">
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="sim-stats">
+      <div class="stat-chip">p before: <strong id="s-pbefore">—</strong></div>
+      <div class="stat-chip">p after: <strong id="s-pafter">—</strong></div>
+      <div class="stat-chip">v A after: <strong id="s-va-after">—</strong></div>
+      <div class="stat-chip">v B after: <strong id="s-vb-after">—</strong></div>
+      <div class="stat-chip" id="s-conserved-chip">Conserved: <strong id="s-conserved">—</strong></div>
+    </div>
+
+    <!-- MESSAGE -->
+    <div class="sim-msg" id="sim-msg"></div>
+
+    <!-- BUTTONS -->
+    <div class="gap-row" style="padding:14px 18px 16px;">
+      <button class="l1-btn l1-btn-primary" id="run-col-btn" onclick="runCollision()">💥 Run Collision!</button>
+      <button class="l1-btn l1-btn-secondary l1-btn-sm" onclick="resetSim()">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- IMPULSE & SAFETY -->
+  <div class="l1-card">
+    <div class="l1-card-title">🛡️ Phase C — Impulse &amp; Safety Features</div>
+    <p style="font-size:.84rem;color:var(--muted);margin-bottom:14px">A car crashes and must stop. Δp = 20,000 kg·m/s. Adjust stopping time OR apply a safety feature to see how force changes!</p>
+
+    <div class="control-row">
+      <label>Stopping Time: <span id="stop-time-val">1.0</span> s</label>
+      <input type="range" id="stop-time" min="0.5" max="10" step="0.5" value="1" oninput="updateSafety()">
+    </div>
+
+    <div class="perf-bar-row" style="margin-top:14px">
+      <div class="perf-bar-labels"><span>Impact Force</span><span id="force-val">—</span></div>
+      <div class="perf-bar-track"><div class="perf-bar-fill" id="force-bar" style="background:linear-gradient(90deg,var(--green),var(--red))"></div></div>
+    </div>
+
+    <p style="font-size:.82rem;color:var(--muted);margin: 8px 0 12px">Apply a safety feature to automatically increase stopping time:</p>
+    <div class="safety-grid">
+      <button class="safety-btn" id="sf-seatbelt" onclick="applySafety('seatbelt')">🚗 Seatbelt (+1s)</button>
+      <button class="safety-btn" id="sf-airbag"   onclick="applySafety('airbag')">💨 Airbag (+3s)</button>
+      <button class="safety-btn" id="sf-crumple"  onclick="applySafety('crumple')">🚧 Crumple Zone (+5s)</button>
+    </div>
+    <div id="safety-result" class="info-box" style="display:none;margin-top:12px"></div>
+  </div>
+
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-green" id="to-analysis-btn" disabled onclick="goPhase(4)">Proceed to Analysis 📊 →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PHASE 4 – PERFORMANCE ANALYSIS
+═══════════════════════════════════════ -->
+<div id="phase-4" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 4</div>
+    <h2>📊 Lab Performance Analysis</h2>
+    <p>Here's a breakdown of what you discovered in the Collision Lab!</p>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">Your Lab Stats</div>
+    <div class="perf-bar-row">
+      <div class="perf-bar-labels"><span>Experiments Completed</span><span id="pa-exp-val">—</span></div>
+      <div class="perf-bar-track"><div class="perf-bar-fill" id="pa-exp-bar"></div></div>
+    </div>
+    <div class="perf-bar-row">
+      <div class="perf-bar-labels"><span>Collisions Simulated</span><span id="pa-col-val">—</span></div>
+      <div class="perf-bar-track"><div class="perf-bar-fill purple" id="pa-col-bar"></div></div>
+    </div>
+    <div class="perf-bar-row">
+      <div class="perf-bar-labels"><span>Safety Features Tested</span><span id="pa-safe-val">—</span></div>
+      <div class="perf-bar-track"><div class="perf-bar-fill" id="pa-safe-bar" style="background:linear-gradient(90deg,var(--green),var(--accent))"></div></div>
+    </div>
+    <div class="tip-callout" id="pa-tip-box">Analysing your performance…</div>
+  </div>
+
+  <div class="l1-card" style="background:rgba(255,215,0,.05);border-color:rgba(255,215,0,.2)">
+    <div class="l1-card-title" style="color:var(--yellow)">🧠 Concept Reinforcement</div>
+    <p style="font-size:.9rem;color:var(--muted);line-height:1.75">
+      <strong style="color:var(--text)">Momentum is always conserved</strong> in any collision — elastic or inelastic.<br>
+      In an <strong style="color:var(--green)">elastic collision</strong>, kinetic energy is also conserved; objects bounce apart.<br>
+      In an <strong style="color:var(--orange)">inelastic collision</strong>, objects stick together; kinetic energy is lost as heat/sound.<br>
+      <strong style="color:var(--text)">F = Δp/t</strong> — increasing stopping time (with airbags, crumple zones, seatbelts) <em>directly reduces force</em>.
+    </p>
+  </div>
+
+  <div class="text-center mt-4">
+    <button class="l1-btn l1-btn-primary" onclick="goPhase(5)">Take the Final Quiz 📝 →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PHASE 5 – FINAL QUIZ
+═══════════════════════════════════════ -->
+<div id="phase-5" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 5 · Final Quiz</div>
+    <h2>📝 Quiz Time!</h2>
+    <p>10 questions on momentum, collisions, and impulse. Red = wrong, Green = right!</p>
+  </div>
+  <div class="l1-card">
+    <div class="quiz-meta">
+      <div class="quiz-counter">Question <span id="q-num">1</span> of 10</div>
+      <div class="quiz-score-live">Score: <span id="q-score-live">0</span></div>
+    </div>
+    <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="q-prog-fill"></div></div>
+    <div class="quiz-q-text" id="q-text"></div>
+    <div class="quiz-options" id="q-options"></div>
+    <div class="quiz-feedback" id="q-feedback"></div>
+    <div class="mt-4 text-center">
+      <button class="l1-btn l1-btn-primary" id="q-next-btn" style="display:none" onclick="nextQuestion()">Next Question →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PHASE 6 – RESULTS & BADGES
+═══════════════════════════════════════ -->
+<div id="phase-6" class="phase-block">
+  <div class="section-header">
+    <div class="phase-tag">Phase 6 · Results</div>
+    <h2>🏆 Lesson Complete!</h2>
+    <p>Here's your final summary for Lesson 2: Momentum &amp; Collisions.</p>
+  </div>
+
+  <div class="l1-card">
+    <div class="result-hero">
+      <span class="result-score-num" id="final-score-num">—</span>
+      <div class="result-score-denom">out of 10 quiz questions</div>
+    </div>
+    <div class="badge-grid" id="badge-grid"></div>
+  </div>
+
+  <div class="l1-card">
+    <div class="l1-card-title">📌 Key Takeaways</div>
+    <ul class="takeaways-list">
+      <li>✅ <strong>Momentum</strong> = mass × velocity (p = mv)</li>
+      <li>✅ <strong>Momentum is conserved</strong> before and after ALL collisions.</li>
+      <li>✅ <strong>Elastic</strong> = bounce apart (KE conserved); <strong>Inelastic</strong> = stick together (KE not fully conserved).</li>
+      <li>✅ <strong>F = Δp/t</strong> — more stopping time = less force (key to safety devices).</li>
+      <li>✅ Seatbelts, airbags &amp; crumple zones all reduce injury by increasing stopping time.</li>
+    </ul>
+  </div>
+
+  <div class="text-center gap-row" style="justify-content:center">
+    <button class="l1-btn l1-btn-secondary" onclick="restartLesson()">↺ Restart Lesson</button>
+    <a href="index.html" class="l1-btn l1-btn-primary">🏠 Back to Dashboard →</a>
+  </div>
+</div>
+
+</div><!-- /lesson-content -->
+</div><!-- /page-body -->
+
+<!-- XP TOAST -->
+<div id="xp-toast">+0 XP</div>
+
+<!-- FUN FACT TOAST -->
+<div id="funfact-toast">
+  <span class="ff-label">💡 Did You Know?</span>
+  <span id="ff-text"></span>
+  <button class="ff-close" onclick="closeFunFact()">✕</button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   STATE MANAGEMENT
+═══════════════════════════════════════════════════ */
+const XP_PER_LEVEL = 1000;
+
+function getDefaultUser() {
+  return {
+    name: 'Student', xp: 0, level: 1, streak: 0, lastLoginDate: null,
+    lessons: { 1:{pct:0,unlocked:true}, 2:{pct:0,unlocked:true}, 3:{pct:0,unlocked:false}, 4:{pct:0,unlocked:false} },
+    lesson2: { phase:1, colSimCount:0, safetyTested:0, goalsCompleted:0, quizScore:0, complete:false }
+  };
+}
+
+function loadUser() {
+  try {
+    const raw = localStorage.getItem('alecs_user');
+    if (!raw) return getDefaultUser();
+    const u = JSON.parse(raw);
+    if (!u.lesson2) u.lesson2 = getDefaultUser().lesson2;
+    if (!u.lessons) u.lessons = getDefaultUser().lessons;
+    if (!u.lessons[2]) u.lessons[2] = { pct:0, unlocked:true };
+    return u;
+  } catch { return getDefaultUser(); }
+}
+
+function saveUser(u) { localStorage.setItem('alecs_user', JSON.stringify(u)); }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function updateStreak(u) {
+  const today = todayStr();
+  if (!u.lastLoginDate) { u.streak = 1; u.lastLoginDate = today; return; }
+  if (u.lastLoginDate === today) return;
+  const diff = Math.round((new Date(today) - new Date(u.lastLoginDate)) / 86400000);
+  u.streak = diff === 1 ? u.streak + 1 : 1;
+  u.lastLoginDate = today;
+}
+
+function awardXP(amount, label) {
+  const u = loadUser();
+  u.xp += amount;
+  while (u.xp >= XP_PER_LEVEL) { u.xp -= XP_PER_LEVEL; u.level++; }
+  saveUser(u);
+  renderXP(u);
+  showXPToast('+' + amount + ' XP' + (label ? ' · ' + label : ''));
+  syncLesson2Progress();
+}
+
+function renderXP(u) {
+  document.getElementById('xp-display').textContent = u.xp + (u.level - 1) * XP_PER_LEVEL;
+  document.getElementById('level-lbl').textContent = '⚡ Level ' + u.level;
+  document.getElementById('xp-lbl').textContent = u.xp + ' / ' + XP_PER_LEVEL + ' XP';
+  document.getElementById('xp-fill').style.width = (u.xp / XP_PER_LEVEL * 100) + '%';
+  document.getElementById('streak-display').textContent = '🔥 ' + u.streak + '-day streak' + (u.streak >= 3 ? '!' : '');
+}
+
+function showXPToast(msg) {
+  const t = document.getElementById('xp-toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function syncLesson2Progress() {
+  try {
+    const u = loadUser();
+    const l2 = u.lesson2;
+    let pct = 0;
+    if (currentPhase >= 2) pct = Math.max(pct, 17);
+    if (currentPhase >= 3) pct = Math.max(pct, 33);
+    if (l2.goalsCompleted >= 2) pct = Math.max(pct, 50);
+    if (l2.goalsCompleted >= 4) pct = Math.max(pct, 70);
+    if (currentPhase >= 4) pct = Math.max(pct, 75);
+    if (currentPhase >= 5) pct = Math.max(pct, 85);
+    if (l2.quizScore > 0) pct = Math.max(pct, Math.round(75 + (l2.quizScore / 10) * 24)); // max 99 here
+    if (l2.complete) pct = 100;
+    // Never set 100 here — only showResults() does that
+    pct = Math.min(pct, l2.complete ? 100 : 99);
+    u.lessons[2].pct = Math.max(u.lessons[2].pct || 0, pct);
+    saveUser(u);
+  } catch(e) {}
+}
+
+// Init
+const USER = loadUser();
+updateStreak(USER);
+if (USER.xpBeforeLesson2 === undefined) USER.xpBeforeLesson2 = USER.xp + (USER.level - 1) * XP_PER_LEVEL;
+saveUser(USER);
+renderXP(USER);
+
+/* ═══════════════════════════════════════════════════
+   PHASE NAVIGATION
+═══════════════════════════════════════════════════ */
+let currentPhase = 1;
+let _resuming = false; // flag to skip XP re-award on resume
+
+function goPhase(n) {
+  document.getElementById('phase-' + currentPhase).className = 'phase-block';
+  document.getElementById('step-' + currentPhase).className = 'step-item done';
+  currentPhase = n;
+  document.getElementById('phase-' + n).className = 'phase-block active';
+  document.getElementById('step-' + n).className = 'step-item active';
+  // Re-mark all earlier steps done
+  for (let i = 1; i < n; i++) {
+    const s = document.getElementById('step-' + i);
+    if (s) s.className = 'step-item done';
+  }
+  window.scrollTo({ top:0, behavior:'smooth' });
+  syncSidebar();
+  // Only award phase-unlock XP if this is NOT a resume
+  if (!_resuming) {
+    const phaseXP = {2:10, 3:15, 4:10, 5:20, 6:0};
+    if (phaseXP[n]) awardXP(phaseXP[n], 'Phase ' + n + ' unlocked');
+  }
+  if (n === 3) initLabPhase();
+  if (n === 4) showAnalysis();
+  if (n === 5) initQuiz();
+  if (n === 6) showResults();
+  // Save phase
+  const u = loadUser(); u.lesson2.phase = n; saveUser(u);
+  syncLesson2Progress();
+}
+
+// Resume to saved phase silently (no XP re-award)
+function resumeToSavedPhase() {
+  const u = loadUser();
+  const saved = u.lesson2 && u.lesson2.phase ? u.lesson2.phase : 1;
+  if (saved > 1) {
+    _resuming = true;
+    goPhase(saved);
+    _resuming = false;
+    // Restore KC next button if phase > 1
+    const kcBtn = document.getElementById('kc-next-btn');
+    if (kcBtn && saved > 1) kcBtn.disabled = false;
+    // Restore drag-drop next button if phase > 2
+    const p2Btn = document.getElementById('p2-next-btn');
+    if (p2Btn && saved > 2) p2Btn.disabled = false;
+  }
+}
+
+function syncSidebar() {
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById('sb-step-' + i);
+    if (!el) continue;
+    el.className = 'sb-phase-item' + (i === currentPhase ? ' active' : i < currentPhase ? ' done' : '');
+  }
+  const u = loadUser();
+  document.getElementById('sb-streak').textContent = '🔥 ' + u.streak + '-day streak';
+  document.getElementById('sb-phase-prog').textContent = 'Phase ' + currentPhase + ' of 6';
+  const totalXP = u.xp + (u.level - 1) * XP_PER_LEVEL;
+  document.getElementById('sb-xp-earned').textContent = totalXP + ' XP total';
+}
+
+/* ── CONFIRM MODAL ── */
+let confirmCallback = null;
+function openConfirm(title, msg, onOk) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  confirmCallback = onOk;
+  document.getElementById('confirm-modal').classList.add('open');
+}
+function closeConfirm() {
+  document.getElementById('confirm-modal').classList.remove('open');
+  confirmCallback = null;
+}
+document.getElementById('confirm-ok-btn').addEventListener('click', () => { if (confirmCallback) confirmCallback(); closeConfirm(); });
+document.getElementById('confirm-modal').addEventListener('click', e => { if (e.target === document.getElementById('confirm-modal')) closeConfirm(); });
+
+function confirmRestart() {
+  openConfirm('↺ Restart Lesson?', 'This resets all Lesson 2 progress. XP earned this run will be reverted.', () => {
+    restartLesson();
+  });
+}
+
+function restartLesson() {
+  const u = loadUser();
+  const xpBefore = u.xpBeforeLesson2 || 0;
+  u.xp = xpBefore % 1000;
+  u.level = 1 + Math.floor(xpBefore / 1000);
+  u.lesson2 = getDefaultUser().lesson2;
+  if (u.lessons && u.lessons[2]) u.lessons[2].pct = 0;
+  u.xpBeforeLesson2 = xpBefore;
+  saveUser(u);
+  location.reload();
+}
+
+/* ── FUN FACTS ── */
+const FUN_FACTS = [
+  '💥 Car crumple zones extend the crash time from ~0.1s to ~0.3s — cutting force by 3×!',
+  '🎱 Billiard balls colliding is nearly perfectly elastic — almost no energy lost as heat!',
+  '🚀 Rockets work using Newton\'s 3rd Law — exhaust gases shot backward push the rocket forward.',
+  '🌍 Earth and Moon are constantly exchanging momentum through gravitational tidal forces.',
+  '🧊 A hockey puck sliding on ice loses very little momentum — nearly frictionless surface!'
+];
+
+function showFunFact() {
+  const el = document.getElementById('ff-text');
+  if (el) el.textContent = FUN_FACTS[Math.floor(Math.random() * FUN_FACTS.length)];
+  document.getElementById('funfact-toast').classList.add('show');
+  setTimeout(closeFunFact, 6000);
+}
+function closeFunFact() { document.getElementById('funfact-toast').classList.remove('show'); }
+
+/* ═══════════════════════════════════════════════════
+   PHASE 1 – KNOWLEDGE CHECK
+═══════════════════════════════════════════════════ */
+const KC_QUESTIONS = [
+  { q: 'What is momentum?', opts: ['The speed of an object', 'The product of mass and velocity', 'The force applied to an object', 'The energy stored in an object'], ans: 1, exp: 'Correct! Momentum p = m × v — it measures how hard it is to stop a moving object.' },
+  { q: 'A truck and a bicycle are moving at the same speed. Which has more momentum?', opts: ['The bicycle', 'The truck', 'They have equal momentum', 'Neither — speed determines momentum'], ans: 1, exp: 'The truck! More mass at the same velocity means more momentum (p = mv).' },
+  { q: 'What happens to momentum in a collision (assuming no external forces)?', opts: ['Momentum is always lost', 'Momentum is always gained', 'Total momentum is conserved', 'Momentum depends on collision type'], ans: 2, exp: 'Total momentum before = total momentum after — this is the Law of Conservation of Momentum.' },
+  { q: 'In which type of collision do objects stick together after impact?', opts: ['Elastic collision', 'Inelastic collision', 'Explosive collision', 'Frictional collision'], ans: 1, exp: 'Inelastic collisions result in objects sticking together. Elastic = bounce apart.' },
+  { q: 'Why do airbags reduce the force of a collision on a passenger?', opts: ['They increase the mass of the car', 'They increase the stopping time', 'They decrease the momentum change', 'They eliminate the collision'], ans: 1, exp: 'F = Δp/t — increasing stopping time t reduces the force F, protecting passengers.' }
+];
+
+let kcAnswered = 0;
+let kcCorrect = 0;
+
+function buildKC() {
+  const wrap = document.getElementById('kc-questions-wrap');
+  wrap.innerHTML = '';
+  KC_QUESTIONS.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'kc-question';
+    div.id = 'kc-q-' + i;
+    div.innerHTML = `
+      <div class="kc-q-text">Q${i+1}. ${q.q}</div>
+      <div class="kc-options">
+        ${q.opts.map((o, oi) => `<button class="kc-opt" onclick="answerKC(${i},${oi})">${o}</button>`).join('')}
+      </div>
+      <div class="kc-feedback" id="kc-fb-${i}"></div>`;
+    wrap.appendChild(div);
+  });
+}
+
+function answerKC(qi, chosen) {
+  const q = KC_QUESTIONS[qi];
+  const qDiv = document.getElementById('kc-q-' + qi);
+  const fb = document.getElementById('kc-fb-' + qi);
+  const opts = qDiv.querySelectorAll('.kc-opt');
+  opts.forEach(b => b.disabled = true);
+  const isCorrect = chosen === q.ans;
+  opts[chosen].classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) opts[q.ans].classList.add('correct');
+  fb.className = 'kc-feedback show ' + (isCorrect ? 'correct' : 'wrong');
+  fb.textContent = isCorrect ? '✓ ' + q.exp : '✗ The correct answer is: ' + q.opts[q.ans] + '. ' + q.exp;
+  if (isCorrect) { kcCorrect++; awardXP(5, 'Correct answer'); }
+  kcAnswered++;
+  if (kcAnswered === KC_QUESTIONS.length) {
+    document.getElementById('kc-next-btn').disabled = false;
+    const u = loadUser(); u.lesson2.kcScore = kcCorrect; saveUser(u);
+  }
+}
+
+buildKC();
+
+/* ═══════════════════════════════════════════════════
+   PHASE 3 – COLLISION LAB
+═══════════════════════════════════════════════════ */
+let goalsCompleted = new Set();
+// Load saved colSimCount from localStorage so analysis shows correct count on resume
+let colSimCount = (() => { try { const u=loadUser(); return (u.lesson2 && u.lesson2.colSimCount) || 0; } catch{return 0;} })();
+let safetyTested = 0;
+let collisionType = 'elastic';
+let simAnimId = null;
+let simCanvas, simCtx;
+// Attempt limits per experiment type
+let elasticAttempts = 0;
+let inelasticAttempts = 0;
+const MAX_COL_ATTEMPTS = 5;
+let elasticDone = false;
+let inelasticDone = false;
+
+// ── MOMENTUM CALCULATOR ──
+let momentumCalcAttempts = 0;
+const MAX_CALC_ATTEMPTS = 3;
+function updateMomentum() {
+  const ma = parseFloat(document.getElementById('mass-a').value);
+  const va = parseFloat(document.getElementById('vel-a').value);
+  const mb = parseFloat(document.getElementById('mass-b').value);
+  const vb = parseFloat(document.getElementById('vel-b').value);
+  document.getElementById('ma-val').textContent = ma;
+  document.getElementById('va-val').textContent = va;
+  document.getElementById('mb-val').textContent = mb;
+  document.getElementById('vb-val').textContent = vb;
+}
+
+function calcMomentum() {
+  momentumCalcAttempts++;
+  const canEarnXP = momentumCalcAttempts <= MAX_CALC_ATTEMPTS;
+  const ma = parseFloat(document.getElementById('mass-a').value);
+  const va = parseFloat(document.getElementById('vel-a').value);
+  const mb = parseFloat(document.getElementById('mass-b').value);
+  const vb = parseFloat(document.getElementById('vel-b').value);
+  const pa = ma * va;
+  const pb = mb * vb;
+  const maxP = Math.max(pa, pb);
+  document.getElementById('pa-label').textContent = pa.toLocaleString() + ' kg·m/s';
+  document.getElementById('pb-label').textContent = pb.toLocaleString() + ' kg·m/s';
+  document.getElementById('pa-bar').style.width = (pa / maxP * 100) + '%';
+  document.getElementById('pb-bar').style.width = (pb / maxP * 100) + '%';
+  const verdict = document.getElementById('mom-verdict');
+  verdict.style.display = 'block';
+  if (pa > pb) {
+    document.getElementById('pa-win').textContent = '← Harder to stop!';
+    verdict.textContent = '🔵 Object A has greater momentum (' + pa.toLocaleString() + ' kg·m/s) and is harder to stop!';
+  } else if (pb > pa) {
+    document.getElementById('pa-win').textContent = '';
+    verdict.textContent = '🟠 Object B has greater momentum (' + pb.toLocaleString() + ' kg·m/s) and is harder to stop!';
+  } else {
+    document.getElementById('pa-win').textContent = '← Equal!';
+    verdict.textContent = '⚖️ Both objects have equal momentum (' + pa.toLocaleString() + ' kg·m/s)!';
+  }
+  markSimGoal(1);
+  if (canEarnXP) {
+    awardXP(10, 'Momentum calculated!');
+    showFunFact();
+    // Update button label with remaining attempts
+    const calcBtn = document.querySelector('button[onclick="calcMomentum()"]');
+    const left = MAX_CALC_ATTEMPTS - momentumCalcAttempts;
+    if (calcBtn) calcBtn.textContent = left > 0 ? `⚡ Calculate Momentum (${left} XP attempt${left !== 1 ? 's' : ''} left)` : '⚡ Calculate Momentum (no more XP)';
+  } else {
+    // No XP but still usable — show note in verdict
+    const verdict = document.getElementById('mom-verdict');
+    verdict.textContent += ' — (No more XP for this experiment)';
+    const calcBtn = document.querySelector('button[onclick="calcMomentum()"]');
+    if (calcBtn) calcBtn.textContent = '⚡ Calculate Momentum (no more XP)';
+  }
+}
+
+// ── COLLISION TYPE ──
+function setCollisionType(type) {
+  collisionType = type;
+  document.getElementById('btn-elastic').classList.toggle('active', type === 'elastic');
+  document.getElementById('btn-inelastic').classList.toggle('active', type === 'inelastic');
+  updateColAttemptDisplay();
+  updateSimPreview();
+}
+
+function updateSimPreview() {
+  document.getElementById('sim-ma-val').textContent = parseFloat(document.getElementById('sim-mass-a').value);
+  document.getElementById('sim-va-val').textContent = parseFloat(document.getElementById('sim-vel-a').value);
+  document.getElementById('sim-mb-val').textContent = parseFloat(document.getElementById('sim-mass-b').value);
+  const vbRaw = parseFloat(document.getElementById('sim-vel-b').value);
+  document.getElementById('sim-vb-val').textContent = vbRaw; // always positive now
+  const dist = parseFloat(document.getElementById('sim-distance').value);
+  document.getElementById('sim-dist-val').textContent = dist.toFixed(1);
+  drawSimStatic();
+}
+
+// ── CANVAS DRAWING ──
+function initSimCanvas() {
+  simCanvas = document.getElementById('sim-canvas');
+  simCtx = simCanvas.getContext('2d');
+  simCanvas.width = simCanvas.offsetWidth || 800;
+  drawSimStatic();
+}
+
+function getBlockPositions() {
+  const ma = parseFloat(document.getElementById('sim-mass-a').value);
+  const mb = parseFloat(document.getElementById('sim-mass-b').value);
+  const dist = parseFloat(document.getElementById('sim-distance').value);
+  const cw = simCanvas ? simCanvas.width : 800;
+  const sizeA = 24 + ma * 4;
+  const sizeB = 24 + mb * 4;
+  // Place blocks symmetrically around center, separated by 'dist' meters
+  // 1 meter = pixelsPerMeter pixels
+  const pixelsPerMeter = Math.min(60, (cw * 0.5) / (dist + 2));
+  const cx = cw / 2;
+  const ax = cx - (dist / 2) * pixelsPerMeter - sizeA / 2;
+  const bx = cx + (dist / 2) * pixelsPerMeter + sizeB / 2;
+  return { ax, bx, sizeA, sizeB, pixelsPerMeter, dist, cx };
+}
+
+function drawRuler(c, cw, ch, ax, bx, sizeA, sizeB, distMeters, pixelsPerMeter) {
+  const rulerY = ch - 16; // sits on the floor line
+  const gapLeft = ax + sizeA / 2;
+  const gapRight = bx - sizeB / 2;
+  const gapPx = gapRight - gapLeft;
+  if (gapPx < 8) return;
+
+  // Bracket lines
+  c.strokeStyle = 'rgba(255,215,0,0.7)';
+  c.lineWidth = 1.5;
+  c.setLineDash([]);
+
+  // Horizontal line
+  c.beginPath();
+  c.moveTo(gapLeft, rulerY - 6);
+  c.lineTo(gapRight, rulerY - 6);
+  c.stroke();
+  // Left tick
+  c.beginPath(); c.moveTo(gapLeft, rulerY - 12); c.lineTo(gapLeft, rulerY - 1); c.stroke();
+  // Right tick
+  c.beginPath(); c.moveTo(gapRight, rulerY - 12); c.lineTo(gapRight, rulerY - 1); c.stroke();
+
+  // Meter tick marks
+  const numMeters = Math.floor(distMeters);
+  for (let m = 1; m < numMeters; m++) {
+    const tx = gapLeft + (m / distMeters) * gapPx;
+    c.beginPath(); c.moveTo(tx, rulerY - 10); c.lineTo(tx, rulerY - 3); c.stroke();
+  }
+
+  // Label
+  c.fillStyle = '#ffd700';
+  c.font = 'bold 11px Nunito, sans-serif';
+  c.textAlign = 'center';
+  const label = distMeters.toFixed(1) + ' m';
+  const midX = (gapLeft + gapRight) / 2;
+  c.fillText(label, midX, rulerY - 15);
+}
+
+function drawSimStatic() {
+  if (!simCanvas) return;
+  const c = simCtx, cw = simCanvas.width, ch = simCanvas.height;
+  const { ax, bx, sizeA, sizeB, pixelsPerMeter, dist } = getBlockPositions();
+
+  // Background
+  const bg = c.createLinearGradient(0, 0, 0, ch);
+  bg.addColorStop(0, '#0a1628'); bg.addColorStop(1, '#132233');
+  c.fillStyle = bg; c.fillRect(0, 0, cw, ch);
+  // Floor
+  c.fillStyle = '#1a3a6b'; c.fillRect(0, ch - 16, cw, 16);
+  c.strokeStyle = 'rgba(59,130,246,0.3)'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(0, ch - 16); c.lineTo(cw, ch - 16); c.stroke();
+  // Center line
+  c.strokeStyle = 'rgba(255,255,255,.1)'; c.setLineDash([6,4]);
+  c.beginPath(); c.moveTo(cw/2, 0); c.lineTo(cw/2, ch-16); c.stroke();
+  c.setLineDash([]);
+
+  // Block A (left)
+  const ay = ch - 16 - sizeA;
+  c.fillStyle = 'rgba(59,130,246,0.8)';
+  c.beginPath(); c.roundRect(ax - sizeA/2, ay, sizeA, sizeA, 4); c.fill();
+  c.fillStyle = '#fff'; c.font = `bold ${Math.min(13,sizeA-4)}px Nunito`; c.textAlign = 'center';
+  c.fillText('A', ax, ay + sizeA/2 + 5);
+
+  // Block B (right)
+  const by = ch - 16 - sizeB;
+  c.fillStyle = 'rgba(255,107,43,0.8)';
+  c.beginPath(); c.roundRect(bx - sizeB/2, by, sizeB, sizeB, 4); c.fill();
+  c.fillStyle = '#fff'; c.textAlign = 'center';
+  c.fillText('B', bx, by + sizeB/2 + 5);
+
+  // Distance ruler
+  drawRuler(c, cw, ch, ax, bx, sizeA, sizeB, dist, pixelsPerMeter);
+
+  // Arrows
+  c.strokeStyle = '#60a5fa'; c.lineWidth = 2;
+  drawArrow(c, ax + sizeA/2 + 4, ay + sizeA/2, ax + sizeA/2 + 36, ay + sizeA/2);
+  c.strokeStyle = '#ff8c52'; c.lineWidth = 2;
+  // vb slider is positive but block B always moves left, so arrow always points left
+  drawArrow(c, bx - sizeB/2 - 4, by + sizeB/2, bx - sizeB/2 - 36, by + sizeB/2);
+}
+
+function drawArrow(ctx, x1, y1, x2, y2) {
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - 8 * Math.cos(angle - 0.4), y2 - 8 * Math.sin(angle - 0.4));
+  ctx.lineTo(x2 - 8 * Math.cos(angle + 0.4), y2 - 8 * Math.sin(angle + 0.4));
+  ctx.closePath(); ctx.fill();
+}
+
+function runCollision() {
+  if (!simCanvas) initSimCanvas();
+
+  const isElastic = collisionType === 'elastic';
+  const msg = document.getElementById('sim-msg');
+  if (isElastic) elasticAttempts++; else inelasticAttempts++;
+  updateColAttemptDisplay();
+
+  const ma = parseFloat(document.getElementById('sim-mass-a').value);
+  const va = parseFloat(document.getElementById('sim-vel-a').value);
+  const mb = parseFloat(document.getElementById('sim-mass-b').value);
+  const vb = -parseFloat(document.getElementById('sim-vel-b').value);
+
+  let vaAfter, vbAfter;
+  const pBefore = ma * va + mb * vb;
+
+  if (isElastic) {
+    vaAfter = ((ma - mb) * va + 2 * mb * vb) / (ma + mb);
+    vbAfter = ((mb - ma) * vb + 2 * ma * va) / (ma + mb);
+  } else {
+    const vFinal = (ma * va + mb * vb) / (ma + mb);
+    vaAfter = vFinal;
+    vbAfter = vFinal;
+  }
+  const pAfter = ma * vaAfter + mb * vbAfter;
+  const conserved = Math.abs(pBefore - pAfter) < 0.5;
+
+  document.getElementById('s-pbefore').textContent = pBefore.toFixed(1) + ' kg·m/s';
+  document.getElementById('s-pafter').textContent = pAfter.toFixed(1) + ' kg·m/s';
+  document.getElementById('s-va-after').textContent = vaAfter.toFixed(2) + ' m/s';
+  document.getElementById('s-vb-after').textContent = vbAfter.toFixed(2) + ' m/s';
+  document.getElementById('s-conserved').textContent = conserved ? '✓ Yes!' : '?';
+
+  colSimCount++;
+  const u = loadUser(); u.lesson2.colSimCount = colSimCount; saveUser(u);
+
+  animateCollision(ma, va, mb, vb, vaAfter, vbAfter);
+
+  setTimeout(() => {
+    // ── Pass / Fail logic ──
+    // Elastic SUCCESS = objects bounce apart (vaAfter ≠ vbAfter, i.e. they separate)
+    // Inelastic SUCCESS = objects stick together (vaAfter ≈ vbAfter)
+    const bouncedApart   = Math.abs(vaAfter - vbAfter) > 0.01;
+    const stuckTogether  = Math.abs(vaAfter - vbAfter) <= 0.01;
+
+    let passed = false;
+    if (isElastic)  passed = bouncedApart;   // elastic must bounce apart
+    else            passed = stuckTogether;   // inelastic must stick together
+
+    const attemptsUsed = isElastic ? elasticAttempts : inelasticAttempts;
+    const alreadyDone  = isElastic ? elasticDone     : inelasticDone;
+
+    if (passed) {
+      // First time passing → award XP, mark goal, show success
+      if (!alreadyDone) {
+        if (isElastic) elasticDone = true; else inelasticDone = true;
+        markSimGoal(isElastic ? 2 : 3);
+        awardXP(15, isElastic ? 'Elastic collision done!' : 'Inelastic collision done!');
+        msg.className = 'sim-msg show correct';
+        msg.textContent = isElastic
+          ? `⚡ PASS! Objects bounced apart correctly. Momentum conserved: ${pBefore.toFixed(1)} → ${pAfter.toFixed(1)} kg·m/s ✓ (+15 XP)`
+          : `💥 PASS! Objects stuck together at v = ${vaAfter.toFixed(2)} m/s. Momentum conserved ✓ (+15 XP)`;
+        showFunFact();
+      } else {
+        // Already passed once — can keep experimenting, no more XP
+        msg.className = 'sim-msg show info';
+        msg.textContent = isElastic
+          ? `⚡ Objects bounced apart again. Momentum conserved ✓ — no more XP (already passed).`
+          : `💥 Objects stuck together again at v = ${vaAfter.toFixed(2)} m/s ✓ — no more XP (already passed).`;
+      }
+    } else {
+      // Failed — wrong outcome for the selected type
+      if (attemptsUsed < MAX_COL_ATTEMPTS) {
+        msg.className = 'sim-msg show wrong';
+        msg.textContent = isElastic
+          ? `✗ FAIL — objects stuck instead of bouncing! Elastic collisions should separate. Try again. (${MAX_COL_ATTEMPTS - attemptsUsed} attempts left)`
+          : `✗ FAIL — objects bounced apart instead of sticking! Inelastic collisions should merge. Try again. (${MAX_COL_ATTEMPTS - attemptsUsed} attempts left)`;
+      } else {
+        msg.className = 'sim-msg show wrong';
+        msg.textContent = isElastic
+          ? `⛔ Out of attempts for Elastic. Objects never bounced correctly — no XP earned. Review the concept and try the other type.`
+          : `⛔ Out of attempts for Inelastic. Objects never stuck together correctly — no XP earned. Review the concept and try the other type.`;
+      }
+    }
+    updateColAttemptDisplay();
+  }, 1800);
+}
+
+function updateColAttemptDisplay() {
+  const badge = document.getElementById('col-type-display');
+  if (!badge) return;
+  const type      = collisionType === 'elastic' ? 'Elastic' : 'Inelastic';
+  const attempts  = collisionType === 'elastic' ? elasticAttempts  : inelasticAttempts;
+  const isDone    = collisionType === 'elastic' ? elasticDone      : inelasticDone;
+  const left      = Math.max(0, MAX_COL_ATTEMPTS - attempts);
+  if (isDone)        badge.textContent = `✅ ${type}: Passed`;
+  else if (left > 0) badge.textContent = `Type: ${type} (${left} attempt${left !== 1 ? 's' : ''} left)`;
+  else               badge.textContent = `⛔ ${type}: No attempts left`;
+}
+
+// ── ANIMATION ──
+function animateCollision(ma, va, mb, vb, vaF, vbF) {
+  if (simAnimId) cancelAnimationFrame(simAnimId);
+  const c = simCtx, cw = simCanvas.width, ch = simCanvas.height;
+  const sizeA = 24 + ma * 4;
+  const sizeB = 24 + mb * 4;
+  const { ax: startAx, bx: startBx, pixelsPerMeter, dist } = getBlockPositions();
+  let axPos = startAx;
+  let bxPos = startBx;
+  let collided = false;
+  let timer = 0;
+  const scale = 12;
+
+  function frame() {
+    timer++;
+    c.clearRect(0, 0, cw, ch);
+    const bg = c.createLinearGradient(0,0,0,ch);
+    bg.addColorStop(0,'#0a1628'); bg.addColorStop(1,'#132233');
+    c.fillStyle = bg; c.fillRect(0,0,cw,ch);
+    c.fillStyle = '#1a3a6b'; c.fillRect(0, ch-16, cw, 16);
+    c.strokeStyle = 'rgba(59,130,246,0.3)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(0,ch-16); c.lineTo(cw,ch-16); c.stroke();
+
+    if (!collided) {
+      axPos += va / scale;
+      bxPos += vb / scale;
+      if (axPos + sizeA/2 >= bxPos - sizeB/2) collided = true;
+    } else {
+      axPos += vaF / scale;
+      bxPos += (collisionType === 'elastic' ? vbF : vaF) / scale;
+    }
+
+    // Draw distance ruler (gap between blocks, only if not yet collided and gap > 0)
+    const gapPx = (bxPos - sizeB/2) - (axPos + sizeA/2);
+    if (!collided && gapPx > 4) {
+      const currentDistM = gapPx / pixelsPerMeter;
+      drawRuler(c, cw, ch, axPos, bxPos, sizeA, sizeB, currentDistM, pixelsPerMeter);
+    }
+
+    // Draw blocks
+    c.fillStyle = 'rgba(59,130,246,0.85)';
+    c.beginPath(); c.roundRect(axPos - sizeA/2, ch - 16 - sizeA, sizeA, sizeA, 4); c.fill();
+    c.fillStyle = '#fff'; c.font = `bold ${Math.min(13,sizeA-4)}px Nunito`; c.textAlign = 'center';
+    c.fillText('A', axPos, ch - 16 - sizeA/2 + 5);
+
+    c.fillStyle = 'rgba(255,107,43,0.85)';
+    c.beginPath(); c.roundRect(bxPos - sizeB/2, ch - 16 - sizeB, sizeB, sizeB, 4); c.fill();
+    c.fillStyle = '#fff'; c.textAlign = 'center';
+    c.fillText('B', bxPos, ch - 16 - sizeB/2 + 5);
+
+    if (collided && collisionType === 'inelastic') {
+      // Merge visual
+      c.strokeStyle = 'rgba(255,215,0,0.6)'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(axPos + sizeA/2, ch-16-sizeA/2); c.lineTo(bxPos - sizeB/2, ch-16-sizeB/2); c.stroke();
+    }
+
+    if (axPos > cw + 60 || bxPos < -60 || timer > 200) {
+      cancelAnimationFrame(simAnimId);
+      simAnimId = null;
+      return;
+    }
+    simAnimId = requestAnimationFrame(frame);
+  }
+  simAnimId = requestAnimationFrame(frame);
+}
+
+// ── SAFETY ──
+let baseSafetyTime = 1;
+let safetyXPAttempts = 0;         // counts total safety presses earning XP
+const MAX_SAFETY_XP = 3;          // XP stops after 3 total presses
+const safetyUsed = { seatbelt: false, airbag: false, crumple: false };
+function updateSafety() {
+  baseSafetyTime = parseFloat(document.getElementById('stop-time').value);
+  document.getElementById('stop-time-val').textContent = baseSafetyTime.toFixed(1);
+  const deltaP = 20000;
+  const force = deltaP / baseSafetyTime;
+  const forcePct = Math.min(100, (force / 40000) * 100);
+  document.getElementById('force-val').textContent = Math.round(force).toLocaleString() + ' N';
+  document.getElementById('force-bar').style.width = forcePct + '%';
+}
+
+function applySafety(type) {
+  const additions = { seatbelt: 1, airbag: 3, crumple: 5 };
+  const names = { seatbelt: 'Seatbelt', airbag: 'Airbag', crumple: 'Crumple Zone' };
+  const added = additions[type];
+  const slider = document.getElementById('stop-time');
+  const newTime = Math.min(10, parseFloat(slider.value) + added);
+  slider.value = newTime;
+  updateSafety();
+  document.querySelectorAll('.safety-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sf-' + type).classList.add('active');
+  const result = document.getElementById('safety-result');
+  result.style.display = 'block';
+  const force = 20000 / newTime;
+
+  const alreadyUsed = safetyUsed[type];
+  const canEarnXP   = !alreadyUsed && safetyXPAttempts < MAX_SAFETY_XP;
+
+  if (!alreadyUsed) {
+    safetyUsed[type] = true;
+    safetyTested++;
+    const u = loadUser(); u.lesson2.safetyTested = safetyTested; saveUser(u);
+    markSimGoal(4);
+  }
+
+  if (canEarnXP) {
+    safetyXPAttempts++;
+    const xpLeft = MAX_SAFETY_XP - safetyXPAttempts;
+    awardXP(10, 'Safety feature tested!');
+    result.innerHTML = `✅ <strong>${names[type]}</strong> applied! Stopping time → <strong>${newTime.toFixed(1)}s</strong>, force → <strong>${Math.round(force).toLocaleString()} N</strong> (${Math.round((1 - force/20000)*100)}% less). (+10 XP · ${xpLeft} XP attempt${xpLeft !== 1 ? 's' : ''} left)`;
+  } else {
+    const reason = alreadyUsed ? 'already applied this feature' : 'XP limit reached (3/3 used)';
+    result.innerHTML = `✅ <strong>${names[type]}</strong> applied! Stopping time → <strong>${newTime.toFixed(1)}s</strong>, force → <strong>${Math.round(force).toLocaleString()} N</strong>. — No more XP (${reason}).`;
+  }
+}
+
+// ── GOALS ──
+function markSimGoal(n) {
+  if (goalsCompleted.has(n)) return;
+  goalsCompleted.add(n);
+  const p = document.getElementById('sim-goal-' + n);
+  if (p) p.classList.add('done');
+  document.getElementById('goals-count').textContent = goalsCompleted.size + ' / 4';
+  awardXP(10, 'Experiment completed!');
+  const u = loadUser(); u.lesson2.goalsCompleted = goalsCompleted.size; saveUser(u);
+  if (goalsCompleted.size >= 4) {
+    document.getElementById('to-analysis-btn').disabled = false;
+    const msg = document.getElementById('sim-msg');
+    msg.className = 'sim-msg show correct';
+    msg.textContent = '🎉 All 4 experiments done! Proceed to Analysis!';
+    awardXP(30, 'All experiments completed!');
+  }
+}
+
+function resetSim() {
+  document.getElementById('sim-msg').className = 'sim-msg';
+  document.getElementById('s-pbefore').textContent = '—';
+  document.getElementById('s-pafter').textContent = '—';
+  document.getElementById('s-va-after').textContent = '—';
+  document.getElementById('s-vb-after').textContent = '—';
+  document.getElementById('s-conserved').textContent = '—';
+  if (simAnimId) cancelAnimationFrame(simAnimId);
+  drawSimStatic();
+}
+
+// Init canvas when phase 3 loads
+function initLabPhase() {
+  setTimeout(() => {
+    initSimCanvas();
+    updateMomentum();
+    updateSafety();
+  }, 50);
+}
+
+/* ═══════════════════════════════════════════════════
+   PHASE 4 – ANALYSIS
+═══════════════════════════════════════════════════ */
+function showAnalysis() {
+  const expPct = Math.min(100, (goalsCompleted.size / 4) * 100);
+  const colPct = Math.min(100, (colSimCount / 4) * 100);
+  const safePct = Math.min(100, (safetyTested / 3) * 100);
+
+  document.getElementById('pa-exp-val').textContent = goalsCompleted.size + ' / 4';
+  document.getElementById('pa-col-val').textContent = colSimCount + ' collisions';
+  document.getElementById('pa-safe-val').textContent = safetyTested + ' / 3';
+
+  setTimeout(() => {
+    document.getElementById('pa-exp-bar').style.width = expPct + '%';
+    document.getElementById('pa-col-bar').style.width = colPct + '%';
+    document.getElementById('pa-safe-bar').style.width = safePct + '%';
+  }, 200);
+
+  const tip = document.getElementById('pa-tip-box');
+  if (expPct === 100) tip.textContent = '🌟 Excellent! You completed all 4 experiments. You clearly understand momentum, conservation, and safety physics!';
+  else if (expPct >= 50) tip.textContent = '💪 Good progress! You explored most experiments. Head back if you want to try the remaining ones.';
+  else tip.textContent = '📚 Keep exploring! The more experiments you run, the better you understand how momentum and force interact.';
+
+  const u = loadUser();
+  u.lesson2.colSimCount = colSimCount;
+  u.lesson2.safetyTested = safetyTested;
+  saveUser(u);
+  awardXP(15, 'Analysis reviewed');
+}
+
+/* ═══════════════════════════════════════════════════
+   PHASE 5 – QUIZ
+═══════════════════════════════════════════════════ */
+const QUIZ_QUESTIONS = [
+  { q: 'A 2 kg ball moves at 5 m/s. What is its momentum?',
+    opts: ['A. 3 kg·m/s', 'B. 10 kg·m/s', 'C. 2.5 kg·m/s', 'D. 7 kg·m/s'],
+    ans: 1, exp: 'p = m × v = 2 × 5 = 10 kg·m/s.' },
+  { q: 'A 1000 kg car moves at 20 m/s. A 2000 kg truck moves at 10 m/s. Which has greater momentum?',
+    opts: ['A. Cannot be determined', 'B. The truck', 'C. They are equal', 'D. The car'],
+    ans: 2, exp: 'Car: 1000×20 = 20,000. Truck: 2000×10 = 20,000. They are equal!' },
+  { q: 'Which statement about the Law of Conservation of Momentum is TRUE?',
+    opts: ['A. Momentum only conserved in elastic collisions', 'B. Momentum depends on the type of force', 'C. Momentum is always lost during collisions', 'D. Total momentum before equals total momentum after'],
+    ans: 3, exp: 'Total momentum is always conserved in a closed system, regardless of collision type.' },
+  { q: 'In a perfectly elastic collision between equal masses where one is at rest, what happens?',
+    opts: ['A. The moving one stops; the stationary one moves at original speed', 'B. Both bounce backward', 'C. Both stop', 'D. Both move forward at half speed'],
+    ans: 0, exp: 'In elastic collision of equal masses, momentum and kinetic energy transfer completely — the first ball stops and the second moves.' },
+  { q: 'Two clay balls of 3 kg each collide and stick together. Ball A moves at 4 m/s and Ball B is at rest. What is the final velocity?',
+    opts: ['A. 4 m/s', 'B. 3 m/s', 'C. 2 m/s', 'D. 1 m/s'],
+    ans: 2, exp: "v' = (m₁v₁ + m₂v₂)/(m₁+m₂) = (3×4 + 3×0)/(3+3) = 12/6 = 2 m/s." },
+  { q: 'A car stops in 0.1 s during a crash (Δp = 10,000 kg·m/s). What force is experienced?',
+    opts: ['A. 500 N', 'B. 1,000 N', 'C. 10,000 N', 'D. 100,000 N'],
+    ans: 3, exp: 'F = Δp/t = 10,000/0.1 = 100,000 N — very dangerous!' },
+  { q: 'The same crash takes 0.5 s with an airbag (Δp = 10,000 kg·m/s). What force now?',
+    opts: ['A. 20,000 N', 'B. 100,000 N', 'C. 10,000 N', 'D. 5,000 N'],
+    ans: 0, exp: 'F = Δp/t = 10,000/0.5 = 20,000 N — 5× less than without airbag!' },
+  { q: 'Which safety feature works by increasing the stopping time of a crash?',
+    opts: ['A. Engine weight', 'B. Crumple zones', 'C. Rear spoiler', 'D. Anti-lock brakes only'],
+    ans: 1, exp: 'Crumple zones deform on impact, extending the crash duration and reducing peak force.' },
+  { q: "Ball A (2 kg, 6 m/s) hits Ball B (2 kg, -2 m/s) elastically. What is Ball A's velocity after?",
+    opts: ['A. 4 m/s', 'B. 6 m/s', 'C. -2 m/s', 'D. 2 m/s'],
+    ans: 2, exp: "Using elastic formula: vA' = ((2-2)×6 + 2×2×(-2))/(2+2) = -8/4 = -2 m/s." },
+  { q: 'Which of these correctly describes an inelastic collision?',
+    opts: ['A. Momentum is lost; kinetic energy conserved', 'B. Objects bounce apart; kinetic energy fully conserved', 'C. Both momentum and kinetic energy are lost', 'D. Objects stick; momentum conserved but kinetic energy is not'],
+    ans: 3, exp: 'Inelastic: objects stick together, momentum IS conserved, but some KE is lost to heat/sound/deformation.' }
+];
+
+let qIndex = 0;
+let qScore = 0;
+let quizAnswered = false;
+
+function initQuiz() {
+  qIndex = 0; qScore = 0;
+  showQuestion();
+}
+
+function showQuestion() {
+  const q = QUIZ_QUESTIONS[qIndex];
+  document.getElementById('q-num').textContent = qIndex + 1;
+  document.getElementById('q-score-live').textContent = qScore;
+  document.getElementById('q-prog-fill').style.width = ((qIndex / 10) * 100) + '%';
+  document.getElementById('q-text').textContent = q.q;
+  const opts = document.getElementById('q-options');
+  opts.innerHTML = '';
+  q.opts.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt'; btn.textContent = o;
+    btn.onclick = () => answerQuiz(i);
+    opts.appendChild(btn);
+  });
+  document.getElementById('q-feedback').className = 'quiz-feedback';
+  document.getElementById('q-feedback').textContent = '';
+  document.getElementById('q-next-btn').style.display = 'none';
+  quizAnswered = false;
+}
+
+function answerQuiz(chosen) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const q = QUIZ_QUESTIONS[qIndex];
+  const opts = document.querySelectorAll('.quiz-opt');
+  opts.forEach(b => b.disabled = true);
+  const isCorrect = chosen === q.ans;
+  opts[chosen].classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) opts[q.ans].classList.add('correct');
+  const fb = document.getElementById('q-feedback');
+  fb.className = 'quiz-feedback show ' + (isCorrect ? 'correct' : 'wrong');
+  fb.textContent = (isCorrect ? '✓ Correct! ' : '✗ Incorrect. ') + q.exp;
+  if (isCorrect) { qScore++; awardXP(10, 'Quiz question correct'); }
+  document.getElementById('q-score-live').textContent = qScore;
+  if (qIndex < QUIZ_QUESTIONS.length - 1) {
+    document.getElementById('q-next-btn').style.display = 'inline-flex';
+  } else {
+    setTimeout(() => goPhase(6), 1200);
+  }
+}
+
+function nextQuestion() { qIndex++; showQuestion(); }
+
+/* ═══════════════════════════════════════════════════
+   PHASE 6 – RESULTS
+═══════════════════════════════════════════════════ */
+function showResults() {
+  document.getElementById('final-score-num').textContent = qScore + ' / 10';
+  const pct = (qScore / 10) * 100;
+
+  const badges = [];
+  if (pct === 100) badges.push({icon:'🏆', name:'PERFECT SCORE'});
+  if (pct >= 80)  badges.push({icon:'🎯', name:'MOMENTUM MASTER'});
+  if (pct >= 60)  badges.push({icon:'💥', name:'COLLISION PRO'});
+  if (pct < 60)   badges.push({icon:'📚', name:'KEEP STUDYING'});
+  if (goalsCompleted.size >= 4) badges.push({icon:'🔬', name:'LAB SCIENTIST'});
+  if (safetyTested >= 3) badges.push({icon:'🛡️', name:'SAFETY EXPERT'});
+
+  const grid = document.getElementById('badge-grid');
+  grid.innerHTML = '';
+  badges.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = 'badge-card';
+    d.style.animationDelay = (i * 0.15) + 's';
+    d.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-name">${b.name}</div>`;
+    grid.appendChild(d);
+  });
+
+  const u = loadUser();
+  u.lesson2.quizScore = qScore;
+  u.lesson2.complete = true;  // always complete when results are shown
+  u.lesson2.phase = 6;
+  u.lessons[2].pct = 100;     // always 100% when lesson is finished
+  // Unlock lesson 3
+  if (u.lessons[3]) u.lessons[3].unlocked = true;
+  saveUser(u);
+
+  const quizXP = qScore * 10 + (pct >= 80 ? 50 : 0);
+  awardXP(quizXP, 'Quiz complete');
+
+  // Mark daily goals
+  if (pct >= 80) {
+    u.dailyGoals = u.dailyGoals || {};
+    u.dailyGoals.quizPassed = true;
+    saveUser(u);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   PHASE 2 – DRAG & DROP: MATCH THE FORMULA
+═══════════════════════════════════════════════════ */
+let l2Dragging = null;
+let l2DdAttempts = 0;
+let l2DdScore = 0;
+let l2DdCompleted = false;
+
+// Chip labels shown in the slot (shorter display text)
+const L2_CHIP_LABELS = {
+  'p = m × v': 'p = m × v',
+  'F = Δp / t': 'F = Δp / t',
+  'm₁v₁ + m₂v₂ = m₁v₁\' + m₂v₂\'': 'Conservation Law',
+  'Impulse = F × t': 'Impulse = F × t',
+  'v\' = (m₁v₁ + m₂v₂) / (m₁ + m₂)': 'Inelastic v\''
+};
+
+function initL2DragDrop() {
+  document.querySelectorAll('.l2-chip').forEach(chip => {
+    chip.addEventListener('dragstart', e => {
+      l2Dragging = chip;
+      e.dataTransfer.setData('text/plain', chip.dataset.val);
+      chip.style.opacity = '0.5';
+    });
+    chip.addEventListener('dragend', () => {
+      if (l2Dragging) l2Dragging.style.opacity = '';
+      l2Dragging = null;
+    });
+    // Touch support
+    chip.addEventListener('touchstart', e => {
+      l2Dragging = chip;
+      chip.style.opacity = '0.5';
+    }, { passive: true });
+  });
+
+  document.querySelectorAll('.l2-drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => {
+      e.preventDefault();
+      zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      if (zone.classList.contains('correct')) return; // already locked correct
+      const val = e.dataTransfer.getData('text/plain');
+      if (!val) return;
+      // Un-place previous chip in this zone
+      const prevVal = zone.dataset.dropped;
+      if (prevVal) {
+        const prevChip = [...document.querySelectorAll('.l2-chip')].find(c => c.dataset.val === prevVal);
+        if (prevChip) prevChip.classList.remove('placed');
+      }
+      zone.dataset.dropped = val;
+      const slotEl = zone.querySelector('.dz-slot');
+      if (slotEl) slotEl.textContent = L2_CHIP_LABELS[val] || val;
+      zone.classList.remove('wrong');
+      zone.classList.add('filled');
+      if (l2Dragging) l2Dragging.classList.add('placed');
+      updateDdScoreBadge();
+    });
+  });
+}
+
+function updateDdScoreBadge() {
+  document.getElementById('dd-score-badge').textContent = l2DdScore + ' / 5';
+  document.getElementById('dd-attempts-badge').textContent = l2DdAttempts;
+}
+
+function checkL2Drag() {
+  const zones = document.querySelectorAll('.l2-drop-zone');
+  let allFilled = true;
+  zones.forEach(z => { if (!z.dataset.dropped) allFilled = false; });
+
+  const resultEl = document.getElementById('l2-drag-result');
+  if (!allFilled) {
+    resultEl.className = 'show info';
+    resultEl.textContent = '⚠️ Place a formula in every drop zone before checking!';
+    return;
+  }
+
+  l2DdAttempts++;
+  l2DdScore = 0;
+
+  zones.forEach(z => {
+    if (z.classList.contains('correct')) { l2DdScore++; return; } // already locked
+    const ok = z.dataset.dropped === z.dataset.answer;
+    z.classList.remove('filled', 'wrong', 'correct');
+    if (ok) {
+      z.classList.add('correct');
+      // Lock the chip in — don't allow re-drag
+      const chip = [...document.querySelectorAll('.l2-chip')].find(c => c.dataset.val === z.dataset.dropped);
+      if (chip) { chip.classList.add('placed'); chip.draggable = false; }
+      l2DdScore++;
+    } else {
+      z.classList.add('wrong');
+      // Return wrong chip to bank
+      const chip = [...document.querySelectorAll('.l2-chip')].find(c => c.dataset.val === z.dataset.dropped);
+      if (chip) chip.classList.remove('placed');
+      delete z.dataset.dropped;
+      const slotEl = z.querySelector('.dz-slot');
+      if (slotEl) slotEl.textContent = 'Drop formula here';
+    }
+  });
+
+  updateDdScoreBadge();
+
+  if (l2DdScore === 5) {
+    resultEl.className = 'show correct';
+    resultEl.textContent = '🎉 Perfect! All 5 formulas matched correctly! You\'re ready for the Collision Lab!';
+    l2DdCompleted = true;
+    awardXP(20, 'Formula Match complete!');
+    showFunFact();
+    const p2Btn = document.getElementById('p2-next-btn');
+    if (p2Btn) p2Btn.disabled = false;
+  } else {
+    resultEl.className = 'show wrong';
+    resultEl.textContent = '✗ ' + l2DdScore + '/5 correct. Wrong ones returned — try again! (Attempt ' + l2DdAttempts + ')';
+  }
+}
+
+function resetL2Drag() {
+  l2DdScore = 0;
+  l2DdAttempts = 0;
+  l2DdCompleted = false;
+  document.querySelectorAll('.l2-chip').forEach(c => {
+    c.classList.remove('placed');
+    c.draggable = true;
+    c.style.opacity = '';
+  });
+  document.querySelectorAll('.l2-drop-zone').forEach(z => {
+    delete z.dataset.dropped;
+    z.classList.remove('filled', 'wrong', 'correct', 'drag-over');
+    const slotEl = z.querySelector('.dz-slot');
+    if (slotEl) slotEl.textContent = 'Drop formula here';
+  });
+  const resultEl = document.getElementById('l2-drag-result');
+  resultEl.className = '';
+  resultEl.textContent = '';
+  updateDdScoreBadge();
+}
+
+// Init when DOM is ready
+initL2DragDrop();
+
+// Init
+syncSidebar();
+
+// Resume to saved phase if returning to lesson
+resumeToSavedPhase();
+  // Handle ?phase= deep-link from Games tab
+  if (window.ALECS && window.ALECS.handlePhaseDeepLink) window.ALECS.handlePhaseDeepLink(goPhase);
+
+
+// Init canvas on page load if starting on phase 3
+if (currentPhase === 3) initLabPhase();
+
+</script>
+</body>
+</html>
